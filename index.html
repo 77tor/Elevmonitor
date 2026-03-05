@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ElevMonitor Pro - Kode 7</title>
+    <title>ElevMonitor Pro - Kode 7 (Fullversjon)</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
@@ -13,7 +13,7 @@
         :root { --primary: #2c3e50; --accent: #27ae60; --bg: #f4f7f6; --white: #ffffff; --blue: #3498db; --orange: #f39c12; --red: #e74c3c; --gray: #95a5a6; --weekend: #fff0f0; --outlook: #0078d4; }
         body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); margin: 0; padding: 15px; color: #333; }
         
-        /* Skjuler appen før innlogging */
+        /* Innlogging */
         #mainApp { display: none; }
         #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); display: flex; justify-content: center; align-items: center; z-index: 2000; }
 
@@ -45,7 +45,6 @@
         .agenda-item { padding: 8px 0; border-bottom: 1px solid #d4e6f1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.85rem; }
         .agenda-tag { font-size: 0.6rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; background: #fff; border: 1px solid #ccc; white-space: nowrap; }
         .agenda-tag.done { color: #aaa !important; border-color: #eee !important; background: #fafafa !important; }
-        .agenda-comment { font-size: 0.8rem; color: #444; background: #fff; padding: 3px 8px; border-radius: 4px; border-left: 3px solid var(--orange); flex-grow: 1; }
 
         label { display: block; margin-top: 12px; font-weight: 600; font-size: 0.85rem; color: var(--primary); }
         input, textarea, button, select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-family: inherit; }
@@ -89,7 +88,7 @@
 <div id="loginOverlay">
     <div class="card" style="text-align: center; width: 350px;">
         <h2>ElevMonitor Cloud</h2>
-        <p>Logg inn for å se data</p>
+        <p>Logg inn for tilgang</p>
         <button onclick="loggInn()" style="background: var(--blue);">Logg inn med Google</button>
     </div>
 </div>
@@ -99,7 +98,7 @@
         <div style="display:flex; align-items:baseline; gap: 15px;">
             <h2 style="margin:0; font-size: 1.2rem;">ElevMonitor Cloud</h2>
             <span id="syncStatus" style="font-size: 0.75rem; opacity: 0.8;">Kobler til...</span>
-            <button onclick="loggUt()" style="background: transparent; border: 1px solid white; font-size: 0.6rem; width: auto; padding: 2px 8px; margin-left: 10px;">Logg ut</button>
+            <button onclick="loggUt()" style="background: transparent; border: 1px solid white; font-size: 0.6rem; width: auto; padding: 2px 8px;">Logg ut</button>
         </div>
         <div id="dateNow" style="font-size: 0.9rem; font-weight: 500;"></div>
     </header>
@@ -184,9 +183,9 @@
     </div>
 </div>
 
-<div id="finishModal" class="modal-overlay"><div class="modal-content"><h3 style="margin-top:0;">Avslutt sak</h3><p id="finishNameText"></p><input type="hidden" id="finishKey"><label>Dato for avslutning:</label><input type="date" id="finishDateInput"><div style="display: flex; gap: 10px; margin-top:20px;"><button style="background: var(--accent);" onclick="confirmFinish()">Bekreft</button><button style="background: var(--gray);" onclick="closeFinishModal()">Avbryt</button></div></div></div>
-<div id="planModal" class="modal-overlay"><div class="modal-content"><h3 id="modalTitle" style="margin-top:0;">Plan Detaljer</h3><input type="hidden" id="modalKey"><label>Utfyllende notater:</label><textarea id="modalEkstraNotat" style="height: 180px; margin-bottom: 15px;"></textarea><div style="display: flex; gap: 10px;"><button style="background: var(--accent);" onclick="savePopup()">Lagre</button><button style="background: var(--gray);" onclick="closePopup()">Avbryt</button></div></div></div>
-<div id="eventModal" class="modal-overlay"><div class="modal-content"><h3 id="eventModalTitle" style="margin-top:0;">Ny hendelse</h3><input type="hidden" id="eventStudentKey"><label>Type</label><select id="eventModalType"><option value="mote">📅 Ekstra Møte</option><option value="oppfolging">📝 Ekstra Oppfølging</option></select><label>Dato</label><input type="date" id="eventModalDate"><label>Info</label><input type="text" id="eventModalInfo"><div style="display: flex; gap: 10px; margin-top:20px;"><button style="background: var(--accent);" onclick="saveExtraEvent()">Lagre</button><button style="background: var(--gray);" onclick="closeEventModal()">Avbryt</button></div></div></div>
+<div id="finishModal" class="modal-overlay"><div class="modal-content"><h3>Avslutt sak</h3><p id="finishNameText"></p><input type="hidden" id="finishKey"><label>Dato:</label><input type="date" id="finishDateInput"><div style="display: flex; gap: 10px; margin-top:20px;"><button style="background: var(--accent);" onclick="confirmFinish()">Bekreft</button><button style="background: var(--gray);" onclick="closeFinishModal()">Avbryt</button></div></div></div>
+<div id="planModal" class="modal-overlay"><div class="modal-content"><h3 id="modalTitle"></h3><input type="hidden" id="modalKey"><label>Utfyllende notater:</label><textarea id="modalEkstraNotat" style="height: 180px; margin-bottom: 15px;"></textarea><div style="display: flex; gap: 10px;"><button style="background: var(--accent);" onclick="savePopup()">Lagre</button><button style="background: var(--gray);" onclick="closePopup()">Avbryt</button></div></div></div>
+<div id="eventModal" class="modal-overlay"><div class="modal-content"><h3>Ny hendelse</h3><input type="hidden" id="eventStudentKey"><label>Type</label><select id="eventModalType"><option value="mote">📅 Ekstra Møte</option><option value="oppfolging">📝 Ekstra Oppfølging</option></select><label>Dato</label><input type="date" id="eventModalDate"><label>Info</label><input type="text" id="eventModalInfo"><div style="display: flex; gap: 10px; margin-top:20px;"><button style="background: var(--accent);" onclick="saveExtraEvent()">Lagre</button><button style="background: var(--gray);" onclick="closeEventModal()">Avbryt</button></div></div></div>
 
 <script>
     const firebaseConfig = { apiKey: "AIzaSyBDZFZl-F8bUyAbwQU_yOZHgUYMA3XiB-0", authDomain: "sosped-haanes.firebaseapp.com", databaseURL: "https://sosped-haanes-default-rtdb.europe-west1.firebasedatabase.app/", projectId: "sosped-haanes" };
@@ -197,7 +196,7 @@
 
     let localDb = {}; let currentViewDate = new Date(); let selectedDateStr = ""; let currentSort = { field: 'klasse', direction: 'asc' };
 
-    // INNLOGGINGSLOGIKK
+    // AUTH LOGIKK
     auth.onAuthStateChanged((user) => {
         if (user) {
             document.getElementById('loginOverlay').style.display = 'none';
@@ -212,7 +211,35 @@
     function loggInn() { auth.signInWithPopup(provider).catch(e => alert(e.message)); }
     function loggUt() { auth.signOut(); }
 
-    // --- ALLE FUNKSJONER FRA KODE 6 BEHOLDT URØRT ---
+    // RAPPORTFUNKSJON FRA KODE 6 (Kategorisert)
+    function genererRapport() {
+        const rapportVindu = window.open('', '_blank'); const datoNå = new Date().toLocaleDateString('no-NO'); const items = Object.values(localDb);
+        const aktive = items.filter(s => s.status !== 'avsluttet'); const typer = [...new Set(aktive.map(s => s.plan || 'Uspesifisert'))];
+        let rapportHtml = `<html><head><title>Saksrapport ${datoNå}</title><style>body { font-family: 'Segoe UI', sans-serif; padding: 30px; color: #333; line-height: 1.5; } h1 { color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px; } h2 { background: #f4f7f6; padding: 10px; border-left: 5px solid #27ae60; margin-top: 30px; } h3 { color: #2980b9; border-bottom: 1px solid #eee; margin-top: 25px; padding-bottom: 5px; } table { width: 100%; border-collapse: collapse; margin-bottom: 20px; } th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 13px; } th { background: #f8f9fa; font-weight: bold; } @media print { .no-print { display: none; } }</style></head><body><h1>Saksrapport - ${datoNå}</h1><h2>AKTIVE PLANER</h2>`;
+        typer.sort().forEach(type => {
+            const saker = aktive.filter(s => (s.plan || 'Uspesifisert') === type);
+            if(saker.length > 0) {
+                rapportHtml += `<h3>${type}</h3><table><thead><tr><th style="width:20%">Navn</th><th style="width:10%">Klasse</th><th style="width:15%">Opprettet</th><th style="width:25%">Oppfølging</th><th style="width:30%">Neste møte</th></tr></thead><tbody>`;
+                saker.forEach(s => { rapportHtml += `<tr><td><strong>${s.navn}</strong></td><td>${s.klasse || '-'}</td><td>${formatDate(s.opprettet)}</td><td>${formatDate(s.oppfolgingDato)}<br><small>${s.oppfolgingKommentar || ''}</small></td><td>${formatDate(s.nesteMoteDato)} ${s.nesteMoteTid || ''}</td></tr>`; });
+                rapportHtml += `</tbody></table>`;
+            }
+        });
+        rapportHtml += `<button class="no-print" onclick="window.print()" style="padding:12px 25px; background:#2c3e50; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Skriv ut / PDF</button></body></html>`;
+        rapportVindu.document.write(rapportHtml); rapportVindu.document.close();
+    }
+
+    // AGENDA VISNING FRA KODE 6
+    function showEvents(dStr) {
+        selectedDateStr = dStr; let html = ""; Object.values(localDb).forEach(s => {
+            const dim = s.status === 'avsluttet' ? 'style="opacity:0.5"' : '';
+            if(s.nesteMoteDato === dStr) { const isDone = s.moteFullfort; html += `<div class="agenda-item ${isDone?'dimmed':''}" ${dim}><span class="agenda-tag ${isDone?'done':''}">${isDone?'✅ UTFØRT':'📅 MØTE '+ (s.nesteMoteTid || '')}</span> <strong>${s.navn}</strong> <small>(${s.klasse})</small></div>`; }
+            if(s.oppfolgingDato === dStr) { const isDone = s.oppfolgingFullfort; html += `<div class="agenda-item ${isDone?'dimmed':''}" ${dim}><span class="agenda-tag ${isDone?'done':''}">${isDone?'✅ UTFØRT':'📝 OPPFØLGING'}</span> <strong>${s.navn}</strong> <small>(${s.klasse})</small></div>`; }
+            (s.historikk || []).filter(h => h.dato === dStr).forEach(h => { const isDone = h.ferdig; html += `<div class="agenda-item ${isDone?'dimmed':''}" ${dim}><span class="agenda-tag ${isDone?'done':''}">${isDone?'✅ UTFØRT':(h.type==='mote'?'📅 MØTE':'📝 OPPFØLGING')}</span> <strong>${s.navn}</strong> <small>(${s.klasse})</small></div>`; });
+        });
+        document.getElementById('eventList').innerHTML = html || "<i>Ingen planer.</i>"; document.getElementById('selectedDateText').innerText = "Agenda for " + formatDate(dStr); renderCalendar();
+    }
+
+    // RESTEN AV LOGIKKEN FRA KODE 6 (Outlook, Tabell, Kalender, etc.)
     function updateAll() { updateTable(); renderCalendar(); updateChronologicalTimeline(); if(selectedDateStr) showEvents(selectedDateStr); }
     function updateTable() {
         const table = document.getElementById('mainTable');
@@ -261,8 +288,6 @@
     function formatDate(s) { return s ? s.split('-').reverse().join('.') : "-"; }
     function changeMonth(v) { currentViewDate.setMonth(currentViewDate.getMonth() + v); renderCalendar(); }
     function sortTable(f) { currentSort.direction = (currentSort.field === f && currentSort.direction === 'asc') ? 'desc' : 'asc'; currentSort.field = f; updateTable(); }
-
-    // Andre nødvendige funksjoner beholdt for at Kode 6 skal fungere 100%
     function rediger(k) { const s = localDb[k]; document.getElementById('navn').value = s.navn; document.getElementById('klasse').value = s.klasse || ""; document.getElementById('plan').value = s.plan || ""; document.getElementById('opprettet').value = s.opprettet; document.getElementById('oppfolgingDato').value = s.oppfolgingDato || ""; document.getElementById('oppfolgingKommentar').value = s.oppfolgingKommentar || ""; document.getElementById('nesteMoteDato').value = s.nesteMoteDato || ""; document.getElementById('nesteMoteTid').value = s.nesteMoteTid || ""; document.getElementById('editKey').value = k; document.getElementById('saveBtn').innerText = "Oppdater"; document.getElementById('saveBtn').style.background = "var(--orange)"; document.getElementById('clearBtn').style.display = "none"; document.getElementById('cancelEditBtn').style.display = "block"; window.scrollTo(0,0); }
     function lagreData() { const k = document.getElementById('editKey').value; const data = { navn: document.getElementById('navn').value, klasse: document.getElementById('klasse').value, plan: document.getElementById('plan').value, opprettet: document.getElementById('opprettet').value || new Date().toISOString().split('T')[0], oppfolgingDato: document.getElementById('oppfolgingDato').value, oppfolgingKommentar: document.getElementById('oppfolgingKommentar').value, nesteMoteDato: document.getElementById('nesteMoteDato').value, nesteMoteTid: document.getElementById('nesteMoteTid').value, historikk: k ? (localDb[k].historikk || []) : [], status: k ? (localDb[k].status || 'aktiv') : 'aktiv', avsluttetDato: k ? (localDb[k].avsluttetDato || null) : null, oppfolgingFullfort: k ? (localDb[k].oppfolgingFullfort || false) : false, moteFullfort: k ? (localDb[k].moteFullfort || false) : false, ekstraNotat: k ? (localDb[k].ekstraNotat || "") : "" }; if(!data.navn) return alert("Navn mangler"); if(k) dbRef.child(k).update(data); else dbRef.push(data); nullstill(); }
     function nullstill() { document.getElementById('editKey').value = ""; document.querySelectorAll('aside input, aside textarea, aside select').forEach(el => el.value = ""); document.getElementById('opprettet').value = new Date().toISOString().split('T')[0]; document.getElementById('saveBtn').innerText = "Lagre til Skyen"; document.getElementById('saveBtn').style.background = "var(--accent)"; document.getElementById('clearBtn').style.display = "block"; document.getElementById('cancelEditBtn').style.display = "none"; }
@@ -300,16 +325,6 @@
             cell.innerHTML = `${(new Date(y,m,d).getDay()===1)?`<div class="week-number">UKE ${Math.ceil((((new Date(Date.UTC(y,m,d)) - new Date(Date.UTC(y,0,1)))/86400000)+1)/7)}</div>`:''} <span>${d}</span> <div class="dots-row">${'<div class="dot"></div>'.repeat(dots)}</div> ${holidays[dStr]?`<div class="holiday-label">${holidays[dStr]}</div>`:''}`;
             cell.onclick = () => showEvents(dStr); grid.appendChild(cell);
         }
-    }
-
-    function showEvents(dStr) {
-        selectedDateStr = dStr; let html = ""; Object.values(localDb).forEach(s => {
-            const dim = s.status === 'avsluttet' ? 'style="opacity:0.5"' : '';
-            if(s.nesteMoteDato === dStr) { const isDone = s.moteFullfort; html += `<div class="agenda-item ${isDone?'dimmed':''}" ${dim}><span class="agenda-tag ${isDone?'done':''}">${isDone?'✅ UTFØRT':'📅 MØTE '+ (s.nesteMoteTid || '')}</span> <strong>${s.navn}</strong> <small>(${s.klasse})</small></div>`; }
-            if(s.oppfolgingDato === dStr) { const isDone = s.oppfolgingFullfort; html += `<div class="agenda-item ${isDone?'dimmed':''}" ${dim}><span class="agenda-tag ${isDone?'done':''}">${isDone?'✅ UTFØRT':'📝 OPPFØLGING'}</span> <strong>${s.navn}</strong> <small>(${s.klasse})</small></div>`; }
-            (s.historikk || []).filter(h => h.dato === dStr).forEach(h => { const isDone = h.ferdig; html += `<div class="agenda-item ${isDone?'dimmed':''}" ${dim}><span class="agenda-tag ${isDone?'done':''}">${isDone?'✅ UTFØRT':(h.type==='mote'?'📅 MØTE':'📝 OPPFØLGING')}</span> <strong>${s.navn}</strong> <small>(${s.klasse})</small></div>`; });
-        });
-        document.getElementById('eventList').innerHTML = html || "<i>Ingen planer.</i>"; document.getElementById('selectedDateText').innerText = "Agenda for " + formatDate(dStr); renderCalendar();
     }
 
     document.getElementById('dateNow').innerText = new Intl.DateTimeFormat('no-NO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
