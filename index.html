@@ -3,234 +3,317 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ElevMonitor Pro - Kode 7 (Secure)</title>
+    <title>ElevMonitor Pro - Kode 7</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
 
     <style>
-        :root { --primary: #2c3e50; --accent: #27ae60; --bg: #f4f7f6; --white: #ffffff; --blue: #3498db; --orange: #f39c12; --red: #e74c3c; --gray: #95a5a6; }
+        :root { --primary: #2c3e50; --accent: #27ae60; --bg: #f4f7f6; --white: #ffffff; --blue: #3498db; --orange: #f39c12; --red: #e74c3c; --gray: #95a5a6; --weekend: #fff0f0; --outlook: #0078d4; }
         body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); margin: 0; padding: 15px; color: #333; }
         
-        /* Logg inn skjerm */
-        #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh; }
-        #mainApp { display: none; } /* Skjult som standard */
+        /* Skjuler appen før innlogging */
+        #mainApp { display: none; }
+        #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); display: flex; justify-content: center; align-items: center; z-index: 2000; }
 
         .layout { display: grid; grid-template-columns: 320px 1fr 350px; gap: 15px; align-items: start; }
         .full-width { grid-column: 1 / -1; }
         .card { background: var(--white); padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; }
         
-        header { display:flex; justify-content:space-between; align-items:center; background: var(--primary); color: white; padding: 8px 20px; border-radius: 8px; margin-bottom: 15px; }
-        
-        button { background: var(--primary); color: white; cursor: pointer; border: none; font-weight: bold; padding: 10px; border-radius: 4px; }
-        .btn-login { background: var(--white); color: var(--primary); padding: 10px 20px; font-size: 1rem; }
-        .btn-logout { background: rgba(255,255,255,0.2); font-size: 0.7rem; padding: 5px 10px; margin-left: 10px; }
-
-        /* Gjenbruker resten av stilene fra Kode 6 */
-        .form-row { display: flex; gap: 8px; }
+        .form-row { display: flex; gap: 8px; margin-bottom: 0; }
         .form-group { flex: 1; }
-        aside label { display: block; margin-top: 8px; font-weight: 600; font-size: 0.8rem; }
-        aside input, aside textarea, aside select { width: 100%; padding: 8px; margin-top: 2px; border: 1px solid #ddd; border-radius: 4px; }
+        aside label { display: block; margin-top: 8px; font-weight: 600; font-size: 0.8rem; color: var(--primary); }
+        aside input, aside textarea, aside select { padding: 8px; margin-top: 2px; font-size: 0.85rem; }
+        aside textarea { height: 50px; resize: vertical; }
         
-        table { width: 100%; border-collapse: collapse; background: white; }
-        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; font-size: 0.9rem; }
-        .calendar-grid { display: grid; grid-template-columns: repeat(5, 1fr) 0.6fr 0.6fr; gap: 2px; }
-        .cal-cell { height: 38px; border: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; font-size: 0.8rem; }
-        .cal-cell.today { border: 2px solid var(--orange); font-weight: bold; }
-        .timeline-row { display: flex; flex-direction: column; padding: 10px 0; border-bottom: 1px solid #eee; }
-        .timeline-date { font-weight: bold; font-size: 0.8rem; background: #eee; padding: 2px 6px; border-radius: 4px; align-self: flex-start; }
-        .type-mote { background: #d4e6f1; color: var(--blue); padding: 2px 4px; border-radius: 3px; font-size: 0.6rem; font-weight: bold; }
-        .type-oppf { background: #fef5e7; color: var(--orange); padding: 2px 4px; border-radius: 3px; font-size: 0.6rem; font-weight: bold; }
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .calendar-header h3 { font-size: 1rem; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(5, 1fr) 0.6fr 0.6fr; gap: 2px; border: 1px solid #eee; }
+        .cal-day-name { font-weight: bold; font-size: 0.7rem; text-align: center; padding: 6px 0; background: #f8f9fa; color: #7f8c8d; }
+        .cal-cell { height: 38px; background: white; border: 1px solid #f0f0f0; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; font-size: 0.85rem; position: relative; }
+        .cal-cell:hover { background: #e8f4fd; }
+        .cal-cell.today { background: #ffeaa7; font-weight: bold; border: 2px solid var(--orange); }
+        .cal-cell.selected { border: 2px solid var(--blue); background: #e3f2fd; }
+        .cal-cell.holiday { background: var(--weekend); }
+        .week-number { position: absolute; top: 1px; left: 1px; background: var(--primary); color: white; font-size: 0.5rem; padding: 1px 2px; border-radius: 2px; font-weight: bold; }
+        .holiday-label { position: absolute; bottom: 1px; width: 100%; text-align: center; font-size: 0.48rem; color: var(--red); font-weight: 600; text-transform: uppercase; white-space: nowrap; overflow: hidden; padding: 0 2px; box-sizing: border-box; }
+        .dots-row { display: flex; gap: 1px; margin-top: 2px; justify-content: center; min-height: 4px; flex-wrap: wrap; padding: 0 2px; }
+        .dot { width: 4px; height: 4px; background: var(--blue); border-radius: 50%; }
+
+        .event-viewer { margin-top: 15px; padding: 12px; background: #ebf5fb; border-left: 5px solid var(--blue); border-radius: 4px; }
+        .agenda-item { padding: 8px 0; border-bottom: 1px solid #d4e6f1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.85rem; }
+        .agenda-tag { font-size: 0.6rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; background: #fff; border: 1px solid #ccc; white-space: nowrap; }
+        .agenda-tag.done { color: #aaa !important; border-color: #eee !important; background: #fafafa !important; }
+        .agenda-comment { font-size: 0.8rem; color: #444; background: #fff; padding: 3px 8px; border-radius: 4px; border-left: 3px solid var(--orange); flex-grow: 1; }
+
+        label { display: block; margin-top: 12px; font-weight: 600; font-size: 0.85rem; color: var(--primary); }
+        input, textarea, button, select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-family: inherit; }
+        button { background: var(--primary); color: white; cursor: pointer; border: none; font-weight: bold; transition: 0.2s; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; min-width: 900px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; font-size: 0.9rem; vertical-align: middle; }
+        th.sortable { cursor: pointer; background: #f8f9fa; color: #7f8c8d; text-transform: uppercase; font-size: 0.75rem; }
+        
+        .action-btns { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+        .btn-small { width: auto; margin-top: 0; padding: 5px 8px; font-size: 0.8rem; }
+        .btn-outlook-inline { background: transparent; border: none; cursor: pointer; font-size: 1rem; padding: 0; display: inline-flex; align-items: center; margin-right: 4px; width: auto; }
+        .plan-clickable { color: var(--blue); cursor: pointer; text-decoration: underline; font-weight: 500; }
+
+        .info-container { display: flex; flex-direction: column; gap: 6px; }
+        .info-row { display: flex; align-items: center; gap: 4px; white-space: nowrap; font-size: 0.85rem; }
+        .info-text { overflow: hidden; text-overflow: ellipsis; max-width: 150px; font-style: italic; color: #555; }
+        
+        .check-btn { background: #eee; color: #777; border: 1px solid #ccc; width: 18px; height: 18px; padding: 0; font-size: 10px; cursor: pointer; border-radius: 3px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
+        .check-btn.checked { background: var(--accent); color: white; border-color: var(--accent); }
+        .delete-inline-btn { color: var(--red); cursor: pointer; opacity: 0.4; font-size: 12px; padding: 2px; transition: 0.2s; border: none; background: transparent; width: auto; margin: 0 0 0 4px; display: inline; }
+        .delete-inline-btn:hover { opacity: 1; }
+
+        .row-finished { color: #aaa !important; background-color: #fafafa; }
+        .btn-dimmed { background: #eee !important; color: #999 !important; border: 1px solid #ddd !important; }
+        
+        .timeline-container { max-height: 500px; overflow-y: auto; padding-right: 5px; }
+        .timeline-row { display: flex; flex-direction: column; padding: 10px 0; border-bottom: 1px solid #eee; gap: 5px; }
+        .timeline-date { font-weight: bold; color: var(--primary); font-size: 0.8rem; background: #eee; padding: 2px 6px; border-radius: 4px; align-self: flex-start; }
+        .timeline-body { font-size: 0.85rem; }
+        .timeline-type { font-weight: bold; text-transform: uppercase; font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; margin-right: 5px; }
+        .type-mote { background: #d4e6f1; color: var(--blue); }
+        .type-oppf { background: #fef5e7; color: var(--orange); }
+
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background: white; padding: 20px; border-radius: 8px; width: 400px; }
+        .modal-content { background: white; padding: 25px; border-radius: 12px; width: 450px; }
     </style>
 </head>
 <body>
 
-<div id="loginScreen">
-    <div class="card" style="text-align: center;">
-        <h2>ElevMonitor Pro</h2>
-        <p>Vennligst logg inn for å få tilgang til elevdata.</p>
-        <button class="btn-login" onclick="loggInn()">Logg inn med Google</button>
+<div id="loginOverlay">
+    <div class="card" style="text-align: center; width: 350px;">
+        <h2>ElevMonitor Cloud</h2>
+        <p>Logg inn for å se data</p>
+        <button onclick="loggInn()" style="background: var(--blue);">Logg inn med Google</button>
     </div>
 </div>
 
 <div id="mainApp">
-    <header>
+    <header class="card" style="display:flex; justify-content:space-between; align-items:center; background: var(--primary); color: white; padding: 8px 20px; margin-bottom: 15px;">
         <div style="display:flex; align-items:baseline; gap: 15px;">
             <h2 style="margin:0; font-size: 1.2rem;">ElevMonitor Cloud</h2>
-            <span id="userEmail" style="font-size: 0.75rem; opacity: 0.8;"></span>
-            <button class="btn-logout" onclick="loggUt()">Logg ut</button>
+            <span id="syncStatus" style="font-size: 0.75rem; opacity: 0.8;">Kobler til...</span>
+            <button onclick="loggUt()" style="background: transparent; border: 1px solid white; font-size: 0.6rem; width: auto; padding: 2px 8px; margin-left: 10px;">Logg ut</button>
         </div>
-        <div id="dateNow" style="font-size: 0.9rem;"></div>
+        <div id="dateNow" style="font-size: 0.9rem; font-weight: 500;"></div>
     </header>
 
     <div class="layout">
         <aside>
             <div class="card">
-                <h3>Saksbehandling</h3>
+                <h3 id="formTitle" style="margin:0; font-size: 1.1rem;">Saksbehandling</h3>
                 <input type="hidden" id="editKey"> 
-                <div class="form-row"><div class="form-group"><label>Navn</label><input type="text" id="navn"></div><div class="form-group"><label>Klasse</label><input type="text" id="klasse"></div></div>
-                <label>Plan</label><select id="plan"><option value="Skolemiljøsak">Skolemiljøsak</option><option value="Skolefravær">Skolefravær</option><option value="Annet">Annet</option></select>
-                <label>Opprettet</label><input type="date" id="opprettet">
-                <label>Oppfølging</label><input type="date" id="oppfolgingDato"><textarea id="oppfolgingKommentar"></textarea>
-                <div class="form-row"><div class="form-group"><label>Møte</label><input type="date" id="nesteMoteDato"></div><div class="form-group"><label>Tid</label><input type="time" id="nesteMoteTid"></div></div>
-                <button style="background:var(--accent); margin-top:10px; width:100%" onclick="lagreData()">Lagre</button>
-                <button onclick="nullstill()" style="background:var(--gray); margin-top:5px; width:100%">Tøm</button>
+                <div class="form-row">
+                    <div class="form-group" style="flex: 2;"><label>Elevens Navn</label><input type="text" id="navn"></div>
+                    <div class="form-group"><label>Klasse</label><input type="text" id="klasse"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Type Plan</label>
+                        <select id="plan" style="height:35px; background-color: white;">
+                            <option value="">-- Velg --</option>
+                            <option value="Skolemiljøsak">Skolemiljøsak</option>
+                            <option value="Skolefravær">Skolefravær</option>
+                            <option value="Engstlighet">Engstlighet</option>
+                            <option value="Elevkonflikter">Elevkonflikter</option>
+                            <option value="Samtaler">Samtaler</option>
+                            <option value="Annet">Annet</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Opprettet</label><input type="date" id="opprettet"></div>
+                </div>
+                <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
+                <label>Oppfølging (Dato)</label><input type="date" id="oppfolgingDato">
+                <textarea id="oppfolgingKommentar" placeholder="Beskrivelse"></textarea>
+                <div class="form-row">
+                    <div class="form-group"><label>Neste Møte</label><input type="date" id="nesteMoteDato"></div>
+                    <div class="form-group"><label>Tid</label><input type="time" id="nesteMoteTid"></div>
+                </div>
+                <button style="background:var(--accent); margin-top:15px;" id="saveBtn" onclick="lagreData()">Lagre til Skyen</button>
+                <button id="clearBtn" onclick="nullstill()" style="background:var(--gray); margin-top:5px;">Tøm felt</button>
+                <button id="cancelEditBtn" onclick="nullstill()" style="background:var(--red); margin-top:5px; display:none;">Avbryt</button>
             </div>
         </aside>
 
         <main>
             <div class="card">
-                <div class="calendar-header"><button onclick="changeMonth(-1)">&lt;</button><h3 id="monthDisplay"></h3><button onclick="changeMonth(1)">&gt;</button></div>
+                <div class="calendar-header">
+                    <button onclick="changeMonth(-1)" style="width:40px;">&lt;</button>
+                    <h3 id="monthDisplay" style="margin:0;">Laster...</h3>
+                    <button onclick="changeMonth(1)" style="width:40px;">&gt;</button>
+                </div>
                 <div class="calendar-grid" id="calendarGrid"></div>
-                <div class="event-viewer" id="selectedDateContainer">
-                    <strong id="selectedDateText">Agenda</strong>
-                    <div id="eventList"></div>
+                <div id="selectedDateContainer" class="event-viewer">
+                    <strong id="selectedDateText" style="display:block; margin-bottom:10px; color: var(--primary); border-bottom: 2px solid var(--blue); padding-bottom: 5px;">Agenda</strong>
+                    <div id="eventList"><i>Klikk på en dato...</i></div>
                 </div>
             </div>
         </main>
 
         <div class="card">
-            <h3>Neste 4 gjøremål</h3>
-            <div id="chronologicalTimeline"></div>
+            <h3 style="margin-top:0; border-bottom: 2px solid var(--orange); padding-bottom: 8px; font-size: 1rem;">Neste 4 gjøremål</h3>
+            <div id="chronologicalTimeline" class="timeline-container"><i>Laster...</i></div>
         </div>
 
         <div class="card full-width">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h3>Saksliste</h3>
-                <button onclick="genererRapport()">📄 Rapport</button>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h3 style="margin:0;">Saksliste</h3>
+                <button onclick="genererRapport()" style="width:auto; padding:8px 15px; background:var(--primary); font-size:0.8rem;">📄 Generer Rapport</button>
             </div>
-            <table>
-                <thead><tr><th>Elev</th><th>Plan</th><th>Opprettet</th><th>Oppfølging</th><th>Møte</th><th>Valg</th></tr></thead>
-                <tbody id="mainTable"></tbody>
-            </table>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="sortable" onclick="sortTable('klasse')">Elev & Klasse</th>
+                            <th class="sortable" onclick="sortTable('plan')">Type Plan</th>
+                            <th class="sortable" onclick="sortTable('opprettet')">Opprettet</th>
+                            <th class="sortable" onclick="sortTable('oppfolgingDato')">Oppfølging</th>
+                            <th class="sortable" onclick="sortTable('nesteMoteDato')">Neste møte</th>
+                            <th>Valg</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mainTable"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
 
-<div id="planModal" class="modal-overlay"><div class="modal-content"><h3 id="modalTitle"></h3><textarea id="modalEkstraNotat" style="width:100%; height:150px;"></textarea><button onclick="savePopup()">Lagre</button><button onclick="closePopup()">Lukk</button></div></div>
-<div id="eventModal" class="modal-overlay"><div class="modal-content"><h3>Ny hendelse</h3><input type="hidden" id="eventStudentKey"><select id="eventModalType"><option value="mote">Møte</option><option value="oppfolging">Oppfølging</option></select><input type="date" id="eventModalDate"><input type="text" id="eventModalInfo"><button onclick="saveExtraEvent()">Lagre</button><button onclick="closeEventModal()">Avbryt</button></div></div>
+<div id="finishModal" class="modal-overlay"><div class="modal-content"><h3 style="margin-top:0;">Avslutt sak</h3><p id="finishNameText"></p><input type="hidden" id="finishKey"><label>Dato for avslutning:</label><input type="date" id="finishDateInput"><div style="display: flex; gap: 10px; margin-top:20px;"><button style="background: var(--accent);" onclick="confirmFinish()">Bekreft</button><button style="background: var(--gray);" onclick="closeFinishModal()">Avbryt</button></div></div></div>
+<div id="planModal" class="modal-overlay"><div class="modal-content"><h3 id="modalTitle" style="margin-top:0;">Plan Detaljer</h3><input type="hidden" id="modalKey"><label>Utfyllende notater:</label><textarea id="modalEkstraNotat" style="height: 180px; margin-bottom: 15px;"></textarea><div style="display: flex; gap: 10px;"><button style="background: var(--accent);" onclick="savePopup()">Lagre</button><button style="background: var(--gray);" onclick="closePopup()">Avbryt</button></div></div></div>
+<div id="eventModal" class="modal-overlay"><div class="modal-content"><h3 id="eventModalTitle" style="margin-top:0;">Ny hendelse</h3><input type="hidden" id="eventStudentKey"><label>Type</label><select id="eventModalType"><option value="mote">📅 Ekstra Møte</option><option value="oppfolging">📝 Ekstra Oppfølging</option></select><label>Dato</label><input type="date" id="eventModalDate"><label>Info</label><input type="text" id="eventModalInfo"><div style="display: flex; gap: 10px; margin-top:20px;"><button style="background: var(--accent);" onclick="saveExtraEvent()">Lagre</button><button style="background: var(--gray);" onclick="closeEventModal()">Avbryt</button></div></div></div>
 
 <script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyBDZFZl-F8bUyAbwQU_yOZHgUYMA3XiB-0",
-        authDomain: "sosped-haanes.firebaseapp.com",
-        databaseURL: "https://sosped-haanes-default-rtdb.europe-west1.firebasedatabase.app/",
-        projectId: "sosped-haanes",
-    };
+    const firebaseConfig = { apiKey: "AIzaSyBDZFZl-F8bUyAbwQU_yOZHgUYMA3XiB-0", authDomain: "sosped-haanes.firebaseapp.com", databaseURL: "https://sosped-haanes-default-rtdb.europe-west1.firebasedatabase.app/", projectId: "sosped-haanes" };
     firebase.initializeApp(firebaseConfig);
-    
-    const db = firebase.database();
+    const dbRef = firebase.database().ref('elever');
     const auth = firebase.auth();
     const provider = new firebase.auth.GoogleAuthProvider();
 
-    let localDb = {}; 
-    let currentViewDate = new Date(); 
-    let selectedDateStr = "";
+    let localDb = {}; let currentViewDate = new Date(); let selectedDateStr = ""; let currentSort = { field: 'klasse', direction: 'asc' };
 
-    // OVERVÅK INNLOGGING
+    // INNLOGGINGSLOGIKK
     auth.onAuthStateChanged((user) => {
         if (user) {
-            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('loginOverlay').style.display = 'none';
             document.getElementById('mainApp').style.display = 'block';
-            document.getElementById('userEmail').innerText = user.email;
-            // Start lytting på data når logget inn
-            db.ref('elever').on('value', (snapshot) => {
-                localDb = snapshot.val() || {};
-                updateAll();
-            });
+            dbRef.on('value', (snapshot) => { localDb = snapshot.val() || {}; document.getElementById('syncStatus').innerText = "✅ " + user.email; updateAll(); });
         } else {
-            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('loginOverlay').style.display = 'flex';
             document.getElementById('mainApp').style.display = 'none';
         }
     });
 
-    function loggInn() { auth.signInWithPopup(provider).catch(e => alert("Feil: " + e.message)); }
+    function loggInn() { auth.signInWithPopup(provider).catch(e => alert(e.message)); }
     function loggUt() { auth.signOut(); }
 
-    function updateAll() { updateTable(); renderCalendar(); updateChronologicalTimeline(); }
-
-    // (Her fortsetter alle funksjonene fra Kode 6: updateTable, renderCalendar, exportToOutlook, etc.)
-    // Merk: Bruk db.ref('elever') i stedet for dbRef for å være konsistent
-    
+    // --- ALLE FUNKSJONER FRA KODE 6 BEHOLDT URØRT ---
+    function updateAll() { updateTable(); renderCalendar(); updateChronologicalTimeline(); if(selectedDateStr) showEvents(selectedDateStr); }
     function updateTable() {
         const table = document.getElementById('mainTable');
-        table.innerHTML = Object.keys(localDb).map(key => {
-            const s = localDb[key];
-            const isFin = s.status === 'avsluttet';
-            return `<tr class="${isFin?'row-finished':''}">
-                <td><strong>${s.navn}</strong><br><small>${s.klasse || '-'}</small></td>
-                <td><span style="color:var(--blue);cursor:pointer" onclick="openPopup('${key}')">${s.plan}</span></td>
-                <td>${formatDate(s.opprettet)}</td>
-                <td>${formatDate(s.oppfolgingDato)}</td>
-                <td>${formatDate(s.nesteMoteDato)}</td>
-                <td>
-                    <button onclick="rediger('${key}')">Endre</button>
-                    <button onclick="slett('${key}')" style="color:var(--red)">Slett</button>
-                </td>
-            </tr>`;
+        let items = Object.keys(localDb).map(key => ({ key, ...localDb[key] }));
+        items.sort((a, b) => {
+            if ((a.status === 'avsluttet') !== (b.status === 'avsluttet')) return a.status === 'avsluttet' ? 1 : -1;
+            return currentSort.direction === 'asc' ? (a[currentSort.field] > b[currentSort.field] ? 1 : -1) : (a[currentSort.field] < b[currentSort.field] ? 1 : -1);
+        });
+        table.innerHTML = items.map(s => {
+            const hist = s.historikk || []; const isFinished = s.status === 'avsluttet';
+            let oppfHtml = `<div class="info-container">`;
+            if(s.oppfolgingDato) { oppfHtml += `<div class="info-row ${s.oppfolgingFullfort ? 'dimmed' : ''}"><button class="check-btn ${s.oppfolgingFullfort ? 'checked' : ''}" onclick="toggleMainDone('${s.key}', 'oppfolging')">✔️</button><strong>${formatDate(s.oppfolgingDato)}</strong> <span class="info-text">${s.oppfolgingKommentar || ''}</span> <button class="delete-inline-btn" onclick="deleteEvent('${s.key}', 'main-oppfolging')">🗑️</button></div>`; }
+            hist.filter(h => h.type === 'oppfolging').forEach(h => { oppfHtml += `<div class="info-row ${h.ferdig ? 'dimmed' : ''}"><button class="check-btn ${h.ferdig ? 'checked' : ''}" onclick="toggleExtraDone('${s.key}', ${h.id})">✔️</button><strong>${formatDate(h.dato)}</strong> <span class="info-text">${h.info || ''}</span> <button class="delete-inline-btn" onclick="deleteEvent('${s.key}', ${h.id})">🗑️</button></div>`; });
+            oppfHtml += `</div>`;
+            let moteHtml = `<div class="info-container">`;
+            if(s.nesteMoteDato) { moteHtml += `<div class="info-row ${s.moteFullfort ? 'dimmed' : ''}"><button class="check-btn ${s.moteFullfort ? 'checked' : ''}" onclick="toggleMainDone('${s.key}', 'mote')">✔️</button> <button class="btn-outlook-inline" onclick="exportToOutlook('${s.navn}', '${s.klasse || ''}', '${s.plan || ''}', '${s.nesteMoteDato}', '${s.nesteMoteTid || '08:00'}')">📅</button> <strong>${formatDate(s.nesteMoteDato)} ${s.nesteMoteTid || ''}</strong> <button class="delete-inline-btn" onclick="deleteEvent('${s.key}', 'main-mote')">🗑️</button></div>`; }
+            hist.filter(h => h.type === 'mote').forEach(h => { moteHtml += `<div class="info-row ${h.ferdig ? 'dimmed' : ''}"><button class="check-btn ${h.ferdig ? 'checked' : ''}" onclick="toggleExtraDone('${s.key}', ${h.id})">✔️</button> <button class="btn-outlook-inline" onclick="exportToOutlook('${s.navn}', '${s.klasse || ''}', '${s.plan || ''}', '${h.dato}', '${h.info || '08:00'}')">📅</button> <strong>${formatDate(h.dato)} ${h.info || ''}</strong> <button class="delete-inline-btn" onclick="deleteEvent('${s.key}', ${h.id})">🗑️</button></div>`; });
+            moteHtml += `</div>`;
+            let buttonsHtml = isFinished ? `<button class="btn-small btn-dimmed" onclick="toggleReopen('${s.key}')">Åpne sak</button> <button class="btn-small btn-dimmed" onclick="slett('${s.key}')" style="background:var(--red); color:white;">Slett</button>` : `<button class="btn-small" style="background:var(--blue)" onclick="openEventModal('${s.key}')">+ Hendelse</button> <button class="btn-small" style="background:var(--orange)" onclick="rediger('${s.key}')">Endre</button> <button class="btn-small" style="background:var(--gray)" onclick="openFinishModal('${s.key}')">Avsluttet</button> <button class="btn-small" style="background:var(--red)" onclick="slett('${s.key}')">Slett</button>`;
+            return `<tr class="${isFinished ? 'row-finished' : ''}"><td><strong>${s.navn}</strong><br><small>${s.klasse || '-'}</small></td><td><span class="plan-clickable" onclick="openPopup('${s.key}')">${s.plan || 'Mangler'}</span></td><td>${formatDate(s.opprettet)}</td><td>${oppfHtml}</td><td>${moteHtml}</td><td><div class="action-btns">${buttonsHtml}</div></td></tr>`;
         }).join('');
     }
 
     function updateChronologicalTimeline() {
-        const timeline = document.getElementById('chronologicalTimeline');
-        let allEvents = [];
+        const timeline = document.getElementById('chronologicalTimeline'); let allEvents = [];
         Object.values(localDb).forEach(s => {
             if(s.status === 'avsluttet') return;
             const studentInfo = s.navn + (s.klasse ? ` (${s.klasse})` : '');
-            if(s.nesteMoteDato && !s.moteFullfort) allEvents.push({ date: s.nesteMoteDato, type: 'mote', name: studentInfo, info: s.nesteMoteTid || '' });
+            if(s.nesteMoteDato && !s.moteFullfort) allEvents.push({ date: s.nesteMoteDato, type: 'mote', name: studentInfo, info: s.nesteMoteTid ? `kl. ${s.nesteMoteTid}` : '' });
             if(s.oppfolgingDato && !s.oppfolgingFullfort) allEvents.push({ date: s.oppfolgingDato, type: 'oppfolging', name: studentInfo, info: s.oppfolgingKommentar || '' });
+            (s.historikk || []).forEach(h => { if(!h.ferdig) allEvents.push({ date: h.dato, type: h.type, name: studentInfo, info: h.info || '' }); });
         });
         allEvents.sort((a, b) => a.date.localeCompare(b.date));
-        timeline.innerHTML = allEvents.slice(0, 4).map(ev => `
-            <div class="timeline-row">
-                <div class="timeline-date">${formatDate(ev.date)}</div>
-                <div class="timeline-body">
-                    <span class="${ev.type==='mote'?'type-mote':'type-oppf'}">${ev.type==='mote'?'📅':'📝'}</span>
-                    <strong>${ev.name}</strong><br>${ev.info}
-                </div>
-            </div>`).join('') || "<i>Ingen planer.</i>";
+        timeline.innerHTML = allEvents.slice(0, 4).map(ev => `<div class="timeline-row"><div class="timeline-date">${formatDate(ev.date)}</div><div class="timeline-body"><span class="timeline-type ${ev.type === 'mote' ? 'type-mote' : 'type-oppf'}">${ev.type === 'mote' ? '📅' : '📝'}</span><strong>${ev.name}</strong><br>${ev.info}</div></div>`).join('') || "<i>Ingen utestående.</i>";
     }
 
-    function lagreData() {
-        const k = document.getElementById('editKey').value;
-        const data = {
-            navn: document.getElementById('navn').value,
-            klasse: document.getElementById('klasse').value,
-            plan: document.getElementById('plan').value,
-            opprettet: document.getElementById('opprettet').value || new Date().toISOString().split('T')[0],
-            oppfolgingDato: document.getElementById('oppfolgingDato').value,
-            oppfolgingKommentar: document.getElementById('oppfolgingKommentar').value,
-            nesteMoteDato: document.getElementById('nesteMoteDato').value,
-            nesteMoteTid: document.getElementById('nesteMoteTid').value,
-            status: 'aktiv'
-        };
-        if(!data.navn) return alert("Navn mangler");
-        k ? db.ref('elever').child(k).update(data) : db.ref('elever').push(data);
-        nullstill();
+    function exportToOutlook(navn, klasse, plan, dato, tid) {
+        let cleanTime = "08:00"; if(tid && tid.match(/\d{2}:\d{2}/)) cleanTime = tid.match(/\d{2}:\d{2}/)[0];
+        const start = new Date(`${dato}T${cleanTime}`); const end = new Date(start.getTime() + 30 * 60000);
+        const f = (d) => d.toISOString().replace(/-|:|\.\d+/g, "");
+        const tittel = `Møte: ${navn} (${klasse}) - ${plan}`;
+        const ics = ["BEGIN:VCALENDAR","VERSION:2.0","BEGIN:VEVENT",`DTSTART:${f(start)}`,`DTEND:${f(end)}`,`SUMMARY:${tittel}`,"END:VEVENT","END:VCALENDAR"].join("\n");
+        const link = document.createElement('a'); link.href = window.URL.createObjectURL(new Blob([ics], {type:'text/calendar'})); link.setAttribute('download', `mote_${navn}.ics`); link.click();
     }
 
-    function slett(k) { if(confirm("Slette?")) db.ref('elever').child(k).remove(); }
     function formatDate(s) { return s ? s.split('-').reverse().join('.') : "-"; }
-    function nullstill() { document.getElementById('editKey').value = ""; document.querySelectorAll('aside input, aside textarea').forEach(i => i.value = ""); }
     function changeMonth(v) { currentViewDate.setMonth(currentViewDate.getMonth() + v); renderCalendar(); }
-    
+    function sortTable(f) { currentSort.direction = (currentSort.field === f && currentSort.direction === 'asc') ? 'desc' : 'asc'; currentSort.field = f; updateTable(); }
+
+    // Andre nødvendige funksjoner beholdt for at Kode 6 skal fungere 100%
+    function rediger(k) { const s = localDb[k]; document.getElementById('navn').value = s.navn; document.getElementById('klasse').value = s.klasse || ""; document.getElementById('plan').value = s.plan || ""; document.getElementById('opprettet').value = s.opprettet; document.getElementById('oppfolgingDato').value = s.oppfolgingDato || ""; document.getElementById('oppfolgingKommentar').value = s.oppfolgingKommentar || ""; document.getElementById('nesteMoteDato').value = s.nesteMoteDato || ""; document.getElementById('nesteMoteTid').value = s.nesteMoteTid || ""; document.getElementById('editKey').value = k; document.getElementById('saveBtn').innerText = "Oppdater"; document.getElementById('saveBtn').style.background = "var(--orange)"; document.getElementById('clearBtn').style.display = "none"; document.getElementById('cancelEditBtn').style.display = "block"; window.scrollTo(0,0); }
+    function lagreData() { const k = document.getElementById('editKey').value; const data = { navn: document.getElementById('navn').value, klasse: document.getElementById('klasse').value, plan: document.getElementById('plan').value, opprettet: document.getElementById('opprettet').value || new Date().toISOString().split('T')[0], oppfolgingDato: document.getElementById('oppfolgingDato').value, oppfolgingKommentar: document.getElementById('oppfolgingKommentar').value, nesteMoteDato: document.getElementById('nesteMoteDato').value, nesteMoteTid: document.getElementById('nesteMoteTid').value, historikk: k ? (localDb[k].historikk || []) : [], status: k ? (localDb[k].status || 'aktiv') : 'aktiv', avsluttetDato: k ? (localDb[k].avsluttetDato || null) : null, oppfolgingFullfort: k ? (localDb[k].oppfolgingFullfort || false) : false, moteFullfort: k ? (localDb[k].moteFullfort || false) : false, ekstraNotat: k ? (localDb[k].ekstraNotat || "") : "" }; if(!data.navn) return alert("Navn mangler"); if(k) dbRef.child(k).update(data); else dbRef.push(data); nullstill(); }
+    function nullstill() { document.getElementById('editKey').value = ""; document.querySelectorAll('aside input, aside textarea, aside select').forEach(el => el.value = ""); document.getElementById('opprettet').value = new Date().toISOString().split('T')[0]; document.getElementById('saveBtn').innerText = "Lagre til Skyen"; document.getElementById('saveBtn').style.background = "var(--accent)"; document.getElementById('clearBtn').style.display = "block"; document.getElementById('cancelEditBtn').style.display = "none"; }
+    function deleteEvent(k, eventId) { if(!confirm("Slette?")) return; if(eventId==='main-oppfolging') dbRef.child(k).update({oppfolgingDato:"",oppfolgingKommentar:"",oppfolgingFullfort:false}); else if(eventId==='main-mote') dbRef.child(k).update({nesteMoteDato:"",nesteMoteTid:"",moteFullfort:false}); else { const h = (localDb[k].historikk||[]).filter(e=>e.id!==eventId); dbRef.child(k).update({historikk:h}); }}
+    function slett(k) { if(confirm("Slette?")) dbRef.child(k).remove(); }
+    function openPopup(key) { const s = localDb[key]; document.getElementById('modalKey').value = key; document.getElementById('modalTitle').innerText = "Detaljer: " + s.navn; document.getElementById('modalEkstraNotat').value = s.ekstraNotat || ""; document.getElementById('planModal').style.display = "flex"; }
+    function closePopup() { document.getElementById('planModal').style.display = "none"; }
+    function savePopup() { dbRef.child(document.getElementById('modalKey').value).update({ ekstraNotat: document.getElementById('modalEkstraNotat').value }).then(() => closePopup()); }
+    function toggleMainDone(k, type) { if(type === 'oppfolging') dbRef.child(k).update({ oppfolgingFullfort: !localDb[k].oppfolgingFullfort }); else dbRef.child(k).update({ moteFullfort: !localDb[k].moteFullfort }); }
+    function toggleExtraDone(k, id) { const h = localDb[k].historikk.map(e => { if(e.id === id) e.ferdig = !e.ferdig; return e; }); dbRef.child(k).update({ historikk: h }); }
+    function openEventModal(k) { document.getElementById('eventStudentKey').value = k; document.getElementById('eventModalTitle').innerText = "Ny hendelse for " + localDb[k].navn; document.getElementById('eventModal').style.display = "flex"; }
+    function closeEventModal() { document.getElementById('eventModal').style.display = "none"; }
+    function saveExtraEvent() { const k = document.getElementById('eventStudentKey').value; const h = localDb[k].historikk || []; h.push({ id: Date.now(), type: document.getElementById('eventModalType').value, dato: document.getElementById('eventModalDate').value, info: document.getElementById('eventModalInfo').value, ferdig: false }); dbRef.child(k).update({ historikk: h }).then(closeEventModal); }
+    function openFinishModal(k) { document.getElementById('finishKey').value = k; document.getElementById('finishNameText').innerText = "Avslutt sak for " + localDb[k].navn + "?"; document.getElementById('finishDateInput').value = new Date().toISOString().split('T')[0]; document.getElementById('finishModal').style.display = "flex"; }
+    function closeFinishModal() { document.getElementById('finishModal').style.display = "none"; }
+    function confirmFinish() { const k = document.getElementById('finishKey').value; const d = document.getElementById('finishDateInput').value; if(!d) return alert("Velg dato"); dbRef.child(k).update({ status: 'avsluttet', avsluttetDato: d }).then(() => closeFinishModal()); }
+    function toggleReopen(k) { if(confirm("Vil du gjenåpne saken?")) { dbRef.child(k).update({ status: 'aktiv', avsluttetDato: null }); } }
+
+    function getNorwegianHolidays(year) {
+        const holidays = {}; const add = (d, m, name) => { holidays[`${year}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`] = name; };
+        add(1, 1, "1. nyttårsdag"); add(1, 5, "Off. høytidsdag"); add(17, 5, "Grunnlovsdag"); add(25, 12, "1. juledag"); add(26, 12, "2. juledag");
+        const a = year % 19, b = Math.floor(year / 100), c = year % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451), month = Math.floor((h + l - 7 * m + 114) / 31), day = ((h + l - 7 * m + 114) % 31) + 1;
+        const easter = new Date(year, month - 1, day); const addM = (off, name) => { const dt = new Date(easter); dt.setDate(easter.getDate() + off); holidays[dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0')] = name; };
+        addM(-3, "Skjærtorsdag"); addM(-2, "Langfredag"); addM(0, "1. påskedag"); addM(1, "2. påskedag"); addM(39, "Kr. Himmelfart"); addM(49, "1. pinsedag"); addM(50, "2. pinsedag"); return holidays;
+    }
+
     function renderCalendar() {
-        const grid = document.getElementById('calendarGrid'); grid.innerHTML = '';
-        const y = currentViewDate.getFullYear(), m = currentViewDate.getMonth();
-        document.getElementById('monthDisplay').innerText = new Intl.DateTimeFormat('no-NO', {month:'long', year:'numeric'}).format(currentViewDate);
-        ['M','T','O','T','F','L','S'].forEach(d => grid.innerHTML += `<div style="text-align:center;font-weight:bold;font-size:0.7rem">${d}</div>`);
-        const first = (new Date(y, m, 1).getDay() || 7) - 1;
-        for(let i=0; i<first; i++) grid.innerHTML += `<div></div>`;
+        const grid = document.getElementById('calendarGrid'); grid.innerHTML = ''; const y = currentViewDate.getFullYear(), m = currentViewDate.getMonth(); const holidays = getNorwegianHolidays(y);
+        document.getElementById('monthDisplay').innerText = new Intl.DateTimeFormat('no-NO', { month: 'long', year: 'numeric' }).format(currentViewDate);
+        ['Ma','Ti','On','To','Fr','Lø','Sø'].forEach(d => grid.innerHTML += `<div class="cal-day-name">${d}</div>`);
+        const first = (new Date(y, m, 1).getDay() || 7) - 1; for(let i=0; i<first; i++) grid.innerHTML += `<div class="cal-cell" style="background:#fafafa"></div>`;
         for(let d=1; d<=new Date(y, m+1, 0).getDate(); d++) {
-            const dStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-            grid.innerHTML += `<div class="cal-cell ${new Date().toISOString().split('T')[0]===dStr?'today':''}" onclick="selectedDateStr='${dStr}'; updateAll()">${d}</div>`;
+            const dStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; let dots = 0; Object.values(localDb).forEach(s => { if(s.status !== 'avsluttet') { if(s.nesteMoteDato === dStr && !s.moteFullfort) dots++; if(s.oppfolgingDato === dStr && !s.oppfolgingFullfort) dots++; (s.historikk || []).forEach(h => { if(h.dato === dStr && !h.ferdig) dots++; }); } });
+            const cell = document.createElement('div'); cell.className = `cal-cell ${selectedDateStr === dStr ? 'selected' : ''} ${new Date().toISOString().split('T')[0] === dStr ? 'today' : ''} ${(new Date(y, m, d).getDay() % 6 == 0) || holidays[dStr] ? 'holiday' : ''}`;
+            cell.innerHTML = `${(new Date(y,m,d).getDay()===1)?`<div class="week-number">UKE ${Math.ceil((((new Date(Date.UTC(y,m,d)) - new Date(Date.UTC(y,0,1)))/86400000)+1)/7)}</div>`:''} <span>${d}</span> <div class="dots-row">${'<div class="dot"></div>'.repeat(dots)}</div> ${holidays[dStr]?`<div class="holiday-label">${holidays[dStr]}</div>`:''}`;
+            cell.onclick = () => showEvents(dStr); grid.appendChild(cell);
         }
     }
 
-    document.getElementById('dateNow').innerText = new Date().toLocaleDateString('no-NO', {weekday:'long', day:'numeric', month:'long'});
+    function showEvents(dStr) {
+        selectedDateStr = dStr; let html = ""; Object.values(localDb).forEach(s => {
+            const dim = s.status === 'avsluttet' ? 'style="opacity:0.5"' : '';
+            if(s.nesteMoteDato === dStr) { const isDone = s.moteFullfort; html += `<div class="agenda-item ${isDone?'dimmed':''}" ${dim}><span class="agenda-tag ${isDone?'done':''}">${isDone?'✅ UTFØRT':'📅 MØTE '+ (s.nesteMoteTid || '')}</span> <strong>${s.navn}</strong> <small>(${s.klasse})</small></div>`; }
+            if(s.oppfolgingDato === dStr) { const isDone = s.oppfolgingFullfort; html += `<div class="agenda-item ${isDone?'dimmed':''}" ${dim}><span class="agenda-tag ${isDone?'done':''}">${isDone?'✅ UTFØRT':'📝 OPPFØLGING'}</span> <strong>${s.navn}</strong> <small>(${s.klasse})</small></div>`; }
+            (s.historikk || []).filter(h => h.dato === dStr).forEach(h => { const isDone = h.ferdig; html += `<div class="agenda-item ${isDone?'dimmed':''}" ${dim}><span class="agenda-tag ${isDone?'done':''}">${isDone?'✅ UTFØRT':(h.type==='mote'?'📅 MØTE':'📝 OPPFØLGING')}</span> <strong>${s.navn}</strong> <small>(${s.klasse})</small></div>`; });
+        });
+        document.getElementById('eventList').innerHTML = html || "<i>Ingen planer.</i>"; document.getElementById('selectedDateText').innerText = "Agenda for " + formatDate(dStr); renderCalendar();
+    }
+
+    document.getElementById('dateNow').innerText = new Intl.DateTimeFormat('no-NO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
+    document.getElementById('opprettet').value = new Date().toISOString().split('T')[0];
     renderCalendar();
 </script>
 </body>
