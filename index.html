@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ElevMonitor Pro - Cloud Sync</title>
+    <title>ElevMonitor Pro - Kode 8</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
@@ -13,10 +13,7 @@
         :root { --primary: #2c3e50; --accent: #27ae60; --bg: #f4f7f6; --white: #ffffff; --blue: #3498db; --orange: #f39c12; --red: #e74c3c; --gray: #95a5a6; --weekend: #fff0f0; --outlook: #0078d4; }
         body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); margin: 0; padding: 15px; color: #333; }
         
-        /* FIX: Skjul hovedappen før innlogging */
         #mainApp { display: none; }
-        
-        /* FIX: Stil for fullførte oppgaver */
         .dimmed { opacity: 0.5; text-decoration: line-through; color: #7f8c8d !important; }
 
         .layout { 
@@ -231,7 +228,10 @@
         <div class="card full-width">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                 <h3 style="margin:0;">Saksliste</h3>
-                <button onclick="genererRapport()" style="width:auto; padding:8px 15px; background:var(--primary); font-size:0.8rem;">📄 Generer Rapport</button>
+                <div style="display:flex; gap:10px;">
+                    <button onclick="genererRapport()" style="width:auto; padding:8px 15px; background:var(--primary); font-size:0.8rem;">📄 Generer Rapport</button>
+                    <button onclick="eksporterTilExcel()" style="width:auto; padding:8px 15px; background:var(--accent); font-size:0.8rem;">📊 Eksporter til Excel</button>
+                </div>
             </div>
             <div style="overflow-x:auto;">
                 <table>
@@ -252,9 +252,6 @@
     </div>
 </div>
 
-</body>
-</html>
-
 <script>
     const firebaseConfig = { apiKey: "AIzaSyBDZFZl-F8bUyAbwQU_yOZHgUYMA3XiB-0", authDomain: "sosped-haanes.firebaseapp.com", databaseURL: "https://sosped-haanes-default-rtdb.europe-west1.firebasedatabase.app/", projectId: "sosped-haanes" };
     firebase.initializeApp(firebaseConfig);
@@ -264,7 +261,6 @@
 
     let localDb = {}; let currentViewDate = new Date(); let selectedDateStr = ""; let currentSort = { field: 'klasse', direction: 'asc' };
 
-    // AUTH LOGIKK
     auth.onAuthStateChanged((user) => {
         if (user) {
             document.getElementById('loginOverlay').style.display = 'none';
@@ -314,7 +310,7 @@
 
         if(avsluttede.length > 0) {
             rapportHtml += `<h2>AVSLUTTEDE / PASSIVE PLANER</h2><table><thead><tr><th>Navn</th><th>Klasse</th><th>Type Plan</th><th>Opprettet</th><th>Avsluttet dato</th></tr></thead><tbody>`;
-            avsluttede.sort((a,b) => b.avsluttetDato.localeCompare(a.avsluttetDato)).forEach(s => {
+            avsluttede.sort((a,b) => (b.avsluttetDato || '').localeCompare(a.avsluttetDato || '')).forEach(s => {
                 rapportHtml += `<tr class="avsluttet-rad"><td>${s.navn}</td><td>${s.klasse || '-'}</td><td>${s.plan || '-'}</td><td>${formatDate(s.opprettet)}</td><td>${formatDate(s.avsluttetDato)}</td></tr>`;
             });
             rapportHtml += `</tbody></table>`;
@@ -382,48 +378,29 @@
         let allEvents = [];
         Object.values(localDb).forEach(s => {
             if(s.status === 'avsluttet') return;
-            // HER ER ENDRINGEN: Lagt til klasse i parentes
             const studentInfo = s.navn + (s.klasse ? ` (${s.klasse})` : '');
-            
             if(s.nesteMoteDato && !s.moteFullfort) allEvents.push({ date: s.nesteMoteDato, type: 'mote', name: studentInfo, info: s.nesteMoteTid ? `kl. ${s.nesteMoteTid}` : '' });
             if(s.oppfolgingDato && !s.oppfolgingFullfort) allEvents.push({ date: s.oppfolgingDato, type: 'oppfolging', name: studentInfo, info: s.oppfolgingKommentar || '' });
             (s.historikk || []).forEach(h => { if(!h.ferdig) allEvents.push({ date: h.dato, type: h.type, name: studentInfo, info: h.info || '' }); });
         });
         allEvents.sort((a, b) => a.date.localeCompare(b.date));
-        
         const limitedEvents = allEvents.slice(0, 4);
-        
         timeline.innerHTML = limitedEvents.length === 0 ? "<i>Ingen utestående.</i>" : limitedEvents.map(ev => `<div class="timeline-row"><div class="timeline-date">${formatDate(ev.date)}</div><div class="timeline-body"><span class="timeline-type ${ev.type === 'mote' ? 'type-mote' : 'type-oppf'}">${ev.type === 'mote' ? '📅' : '📝'}</span><strong>${ev.name}</strong><br>${ev.info}</div></div>`).join('');
     }
 
-// Oppdatert funksjon i Kode 6
-function exportToOutlook(navn, klasse, plan, dato, tid) {
-    let cleanTime = "08:00"; 
-    if(tid && tid.match(/\d{2}:\d{2}/)) cleanTime = tid.match(/\d{2}:\d{2}/)[0];
-    
-    const start = new Date(`${dato}T${cleanTime}`); 
-    const end = new Date(start.getTime() + 30 * 60000);
-    const f = (d) => d.toISOString().replace(/-|:|\.\d+/g, "");
-    
-    // Her legges 'plan' inn i tittelen
-    const tittel = `Møte: ${navn} (${klasse}) - ${plan}`;
-    
-    const ics = [
-        "BEGIN:VCALENDAR",
-        "VERSION:2.0",
-        "BEGIN:VEVENT",
-        `DTSTART:${f(start)}`,
-        `DTEND:${f(end)}`,
-        `SUMMARY:${tittel}`,
-        "END:VEVENT",
-        "END:VCALENDAR"
-    ].join("\n");
-    
-    const link = document.createElement('a'); 
-    link.href = window.URL.createObjectURL(new Blob([ics], {type:'text/calendar'})); 
-    link.setAttribute('download', `mote_${navn}.ics`); 
-    link.click();
-}
+    function exportToOutlook(navn, klasse, plan, dato, tid) {
+        let cleanTime = "08:00"; 
+        if(tid && tid.match(/\d{2}:\d{2}/)) cleanTime = tid.match(/\d{2}:\d{2}/)[0];
+        const start = new Date(`${dato}T${cleanTime}`); 
+        const end = new Date(start.getTime() + 30 * 60000);
+        const f = (d) => d.toISOString().replace(/-|:|\.\d+/g, "");
+        const tittel = `Møte: ${navn} (${klasse}) - ${plan}`;
+        const ics = ["BEGIN:VCALENDAR","VERSION:2.0","BEGIN:VEVENT",`DTSTART:${f(start)}`,`DTEND:${f(end)}`,`SUMMARY:${tittel}`,"END:VEVENT","END:VCALENDAR"].join("\n");
+        const link = document.createElement('a'); 
+        link.href = window.URL.createObjectURL(new Blob([ics], {type:'text/calendar'})); 
+        link.setAttribute('download', `mote_${navn}.ics`); 
+        link.click();
+    }
 
     function deleteEvent(k, eventId) { if(!confirm("Slette hendelsen?")) return; if(eventId === 'main-oppfolging') dbRef.child(k).update({ oppfolgingDato: "", oppfolgingKommentar: "", oppfolgingFullfort: false }); else if(eventId === 'main-mote') dbRef.child(k).update({ nesteMoteDato: "", nesteMoteTid: "", moteFullfort: false }); else { const h = (localDb[k].historikk || []).filter(e => e.id !== eventId); dbRef.child(k).update({ historikk: h }); } }
     function slett(k) { if (confirm(`Slette saken til ${localDb[k].navn}?`)) dbRef.child(k).remove(); }
@@ -452,7 +429,7 @@ function exportToOutlook(navn, klasse, plan, dato, tid) {
     function getWeekNumber(d) { d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7)); var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1)); return Math.ceil((((d - yearStart) / 86400000) + 1) / 7); }
 
     function renderCalendar() {
-        const grid = document.getElementById('calendarGrid'); grid.innerHTML = '';
+        const grid = document.getElementById('calendarGrid'); if(!grid) return; grid.innerHTML = '';
         const y = currentViewDate.getFullYear(), m = currentViewDate.getMonth(); const holidays = getNorwegianHolidays(y);
         document.getElementById('monthDisplay').innerText = new Intl.DateTimeFormat('no-NO', { month: 'long', year: 'numeric' }).format(currentViewDate);
         ['Ma','Ti','On','To','Fr','Lø','Sø'].forEach(d => grid.innerHTML += `<div class="cal-day-name">${d}</div>`);
@@ -472,9 +449,9 @@ function exportToOutlook(navn, klasse, plan, dato, tid) {
         selectedDateStr = dStr; let html = "";
         Object.values(localDb).forEach(s => {
             const dim = s.status === 'avsluttet' ? 'style="opacity:0.5"' : '';
-            if(s.nesteMoteDato === dStr) { const isDone = s.moteFullfort; html += `<div class="agenda-item ${isDone?'dimmed':''}" ${dim}><span class="agenda-tag ${isDone?'done':''}">${isDone?'✅ UTFØRT':'📅 MØTE '+ (s.nesteMoteTid || '')}</span> <strong>${s.navn}</strong> <small>(${s.klasse})</small></div>`; }
-            if(s.oppfolgingDato === dStr) { const isDone = s.oppfolgingFullfort; html += `<div class="agenda-item ${isDone?'dimmed':''}" ${dim}><span class="agenda-tag ${isDone?'done':''}">${isDone?'✅ UTFØRT':'📝 OPPFØLGING'}</span> <strong>${s.navn}</strong> <small>(${s.klasse})</small> ${s.oppfolgingKommentar ? `<div class="agenda-comment">${s.oppfolgingKommentar}</div>` : ''}</div>`; }
-            (s.historikk || []).filter(h => h.dato === dStr).forEach(h => { const isDone = h.ferdig; html += `<div class="agenda-item ${isDone?'dimmed':''}" ${dim}><span class="agenda-tag ${isDone?'done':''}">${isDone?'✅ UTFØRT':(h.type==='mote'?'📅 MØTE':'📝 OPPFØLGING')}</span> <strong>${s.navn}</strong> <small>(${s.klasse})</small> <div class="agenda-comment">${h.info || ''}</div></div>`; });
+            if(s.nesteMoteDato === dStr) { const isDone = s.moteFullfort; html += `<div class="agenda-item ${isDone?'dimmed':''}" ${dim}><span class="agenda-tag ${isDone?'done':''}">${isDone?'✅ UTFØRT':'📅 MØTE '+ (s.nesteMoteTid || '')}</span> <strong>${s.navn}</strong> <small>(${s.klasse || ''})</small></div>`; }
+            if(s.oppfolgingDato === dStr) { const isDone = s.oppfolgingFullfort; html += `<div class="agenda-item ${isDone?'dimmed':''}" ${dim}><span class="agenda-tag ${isDone?'done':''}">${isDone?'✅ UTFØRT':'📝 OPPFØLGING'}</span> <strong>${s.navn}</strong> <small>(${s.klasse || ''})</small> ${s.oppfolgingKommentar ? `<div class="agenda-comment">${s.oppfolgingKommentar}</div>` : ''}</div>`; }
+            (s.historikk || []).filter(h => h.dato === dStr).forEach(h => { const isDone = h.ferdig; html += `<div class="agenda-item ${isDone?'dimmed':''}" ${dim}><span class="agenda-tag ${isDone?'done':''}">${isDone?'✅ UTFØRT':(h.type==='mote'?'📅 MØTE':'📝 OPPFØLGING')}</span> <strong>${s.navn}</strong> <small>(${s.klasse || ''})</small> <div class="agenda-comment">${h.info || ''}</div></div>`; });
         });
         document.getElementById('eventList').innerHTML = html || "<i>Ingen planer denne dagen.</i>";
         document.getElementById('selectedDateText').innerText = "Agenda for " + formatDate(dStr); renderCalendar();
@@ -498,6 +475,43 @@ function exportToOutlook(navn, klasse, plan, dato, tid) {
     function nullstill() {
         document.getElementById('editKey').value = ""; document.querySelectorAll('aside input, aside textarea, aside select').forEach(el => el.value = ""); document.getElementById('opprettet').value = new Date().toISOString().split('T')[0];
         document.getElementById('saveBtn').innerText = "Lagre til Skyen"; document.getElementById('saveBtn').style.background = "var(--accent)"; document.getElementById('clearBtn').style.display = "block"; document.getElementById('cancelEditBtn').style.display = "none";
+    }
+
+    // NY FUNKSJON: EKSPORETR TIL EXCEL (CSV)
+    function eksporterTilExcel() {
+        const items = Object.values(localDb);
+        if (items.length === 0) return alert("Ingen data å eksportere");
+        
+        // Header
+        let csv = "Navn;Klasse;Plan;Status;Opprettet;Oppfølging Dato;Kommentar;Neste Møte;Tid;Avsluttet Dato\n";
+        
+        // Data rader
+        items.forEach(s => {
+            const rad = [
+                s.navn || "",
+                s.klasse || "",
+                s.plan || "",
+                s.status || "aktiv",
+                s.opprettet || "",
+                s.oppfolgingDato || "",
+                (s.oppfolgingKommentar || "").replace(/;/g, ","), // Unngå konflikt med separator
+                s.nesteMoteDato || "",
+                s.nesteMoteTid || "",
+                s.avsluttetDato || ""
+            ];
+            csv += rad.join(";") + "\n";
+        });
+
+        // Last ned fil (med BOM for norske tegn i Excel)
+        const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `ElevMonitor_Eksport_${new Date().toLocaleDateString()}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 
     document.getElementById('dateNow').innerText = new Intl.DateTimeFormat('no-NO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
