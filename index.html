@@ -477,37 +477,39 @@
         document.getElementById('saveBtn').innerText = "Lagre til Skyen"; document.getElementById('saveBtn').style.background = "var(--accent)"; document.getElementById('clearBtn').style.display = "block"; document.getElementById('cancelEditBtn').style.display = "none";
     }
 
-    // NY FUNKSJON: EKSPORETR TIL EXCEL (CSV)
+    // OPPDATERT FUNKSJON: EKSPORETR TIL EXCEL (Inkluderer nå alle hendelser fra historikk)
     function eksporterTilExcel() {
         const items = Object.values(localDb);
         if (items.length === 0) return alert("Ingen data å eksportere");
         
-        // Header
-        let csv = "Navn;Klasse;Plan;Status;Opprettet;Oppfølging Dato;Kommentar;Neste Møte;Tid;Avsluttet Dato\n";
+        let csv = "Navn;Klasse;Plan;Status;Dato;Type;Info/Kommentar;Fullført\n";
         
-        // Data rader
         items.forEach(s => {
-            const rad = [
-                s.navn || "",
-                s.klasse || "",
-                s.plan || "",
-                s.status || "aktiv",
-                s.opprettet || "",
-                s.oppfolgingDato || "",
-                (s.oppfolgingKommentar || "").replace(/;/g, ","), // Unngå konflikt med separator
-                s.nesteMoteDato || "",
-                s.nesteMoteTid || "",
-                s.avsluttetDato || ""
-            ];
-            csv += rad.join(";") + "\n";
+            // 1. Hoved-oppfølging
+            if(s.oppfolgingDato) {
+                csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.oppfolgingDato};Oppfølging;${(s.oppfolgingKommentar||"").replace(/;/g, ",")};${s.oppfolgingFullfort ? 'JA' : 'NEI'}\n`;
+            }
+            // 2. Hoved-møte
+            if(s.nesteMoteDato) {
+                csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.nesteMoteDato};Møte;${s.nesteMoteTid||""};${s.moteFullfort ? 'JA' : 'NEI'}\n`;
+            }
+            // 3. Alle ekstra hendelser fra historikk
+            if(s.historikk && Array.isArray(s.historikk)) {
+                s.historikk.forEach(h => {
+                    csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${h.dato};${h.type==='mote'?'Ekstra Møte':'Ekstra Oppfølging'};${(h.info||"").replace(/;/g, ",")};${h.ferdig ? 'JA' : 'NEI'}\n`;
+                });
+            }
+            // 4. Hvis saken ikke har noen datoer ennå, legg til en rad for selve saken
+            if(!s.oppfolgingDato && !s.nesteMoteDato && (!s.historikk || s.historikk.length === 0)) {
+                csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.opprettet};Opprettet;-;-\n`;
+            }
         });
 
-        // Last ned fil (med BOM for norske tegn i Excel)
         const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
         link.setAttribute("href", url);
-        link.setAttribute("download", `ElevMonitor_Eksport_${new Date().toLocaleDateString()}.csv`);
+        link.setAttribute("download", `ElevMonitor_Komplett_Eksport_${new Date().toLocaleDateString()}.csv`);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
