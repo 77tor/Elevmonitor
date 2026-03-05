@@ -13,7 +13,12 @@
         :root { --primary: #2c3e50; --accent: #27ae60; --bg: #f4f7f6; --white: #ffffff; --blue: #3498db; --orange: #f39c12; --red: #e74c3c; --gray: #95a5a6; --weekend: #fff0f0; --outlook: #0078d4; }
         body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); margin: 0; padding: 15px; color: #333; }
         
-        /* LAYOUT FOR TRESPLATTET VISNING */
+        /* FIX: Skjul hovedappen før innlogging */
+        #mainApp { display: none; }
+        
+        /* FIX: Stil for fullførte oppgaver */
+        .dimmed { opacity: 0.5; text-decoration: line-through; color: #7f8c8d !important; }
+
         .layout { 
             display: grid; 
             grid-template-columns: 320px 1fr 350px; 
@@ -21,6 +26,10 @@
             align-items: start;
         }
         
+        @media (max-width: 1100px) {
+            .layout { grid-template-columns: 1fr; }
+        }
+
         .full-width { grid-column: 1 / -1; }
         .card { background: var(--white); padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; }
         
@@ -88,6 +97,12 @@
 
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; }
         .modal-content { background: white; padding: 25px; border-radius: 12px; width: 450px; }
+
+        #loginOverlay { 
+            position: fixed; top:0; left:0; width:100%; height:100%; 
+            background: var(--bg); display: flex; justify-content: center; 
+            align-items: center; z-index: 2000; 
+        }
     </style>
 </head>
 <body>
@@ -100,134 +115,145 @@
     </div>
 </div>
 
-<header class="card" style="display:flex; justify-content:space-between; align-items:center; background: var(--primary); color: white; padding: 8px 20px; margin-bottom: 15px;">
-    <div style="display:flex; align-items:baseline; gap: 15px;">
-        <h2 style="margin:0; font-size: 1.2rem;">ElevMonitor Cloud</h2>
-        <span id="syncStatus" style="font-size: 0.75rem; opacity: 0.8;">Kobler til...</span>
-    </div>
-    <div id="dateNow" style="font-size: 0.9rem; font-weight: 500;"></div>
-</header>
+<div id="mainApp">
 
-<div id="finishModal" class="modal-overlay">
-    <div class="modal-content">
-        <h3 style="margin-top:0;">Avslutt sak</h3>
-        <p id="finishNameText"></p>
-        <input type="hidden" id="finishKey">
-        <label>Dato for avslutning:</label>
-        <input type="date" id="finishDateInput">
-        <div style="display: flex; gap: 10px; margin-top:20px;">
-            <button style="background: var(--accent);" onclick="confirmFinish()">Bekreft avslutning</button>
-            <button style="background: var(--gray);" onclick="closeFinishModal()">Avbryt</button>
+    <header class="card" style="display:flex; justify-content:space-between; align-items:center; background: var(--primary); color: white; padding: 8px 20px; margin-bottom: 15px;">
+        <div style="display:flex; align-items:baseline; gap: 15px;">
+            <h2 style="margin:0; font-size: 1.2rem;">ElevMonitor Cloud</h2>
+            <span id="syncStatus" style="font-size: 0.75rem; opacity: 0.8;">Kobler til...</span>
         </div>
-    </div>
-</div>
-
-<div id="planModal" class="modal-overlay">
-    <div class="modal-content">
-        <h3 id="modalTitle" style="margin-top:0; color: var(--primary);">Plan Detaljer</h3>
-        <input type="hidden" id="modalKey">
-        <label>Utfyllende notater:</label>
-        <textarea id="modalEkstraNotat" style="height: 180px; margin-bottom: 15px;" placeholder="Skriv her..."></textarea>
-        <div style="display: flex; gap: 10px;">
-            <button style="background: var(--accent);" onclick="savePopup()">Lagre og lukk</button>
-            <button style="background: var(--gray);" onclick="closePopup()">Avbryt</button>
+        <div style="display:flex; align-items:center; gap:15px;">
+            <div id="dateNow" style="font-size: 0.9rem; font-weight: 500;"></div>
+            <button onclick="loggUt()" style="width:auto; background:rgba(255,255,255,0.1); padding:5px 10px; font-size:0.7rem;">Logg ut</button>
         </div>
-    </div>
-</div>
+    </header>
 
-<div id="eventModal" class="modal-overlay">
-    <div class="modal-content">
-        <h3 id="eventModalTitle" style="margin-top:0;">Ny hendelse</h3>
-        <input type="hidden" id="eventStudentKey">
-        <label>Type hendelse</label>
-        <select id="eventModalType"><option value="mote">📅 Ekstra Møte</option><option value="oppfolging">📝 Ekstra Oppfølging</option></select>
-        <label>Dato</label><input type="date" id="eventModalDate">
-        <label>Info / Klokkeslett</label><input type="text" id="eventModalInfo">
-        <div style="display: flex; gap: 10px; margin-top:20px;">
-            <button style="background: var(--accent);" onclick="saveExtraEvent()">Lagre</button>
-            <button style="background: var(--gray);" onclick="closeEventModal()">Avbryt</button>
-        </div>
-    </div>
-</div>
-
-<div class="layout">
-    <aside>
-        <div class="card">
-            <h3 id="formTitle" style="margin:0; font-size: 1.1rem;">Saksbehandling</h3>
-            <input type="hidden" id="editKey"> 
-            <div class="form-row">
-                <div class="form-group" style="flex: 2;"><label>Elevens Navn</label><input type="text" id="navn"></div>
-                <div class="form-group"><label>Klasse</label><input type="text" id="klasse"></div>
+    <div id="finishModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 style="margin-top:0;">Avslutt sak</h3>
+            <p id="finishNameText"></p>
+            <input type="hidden" id="finishKey">
+            <label>Dato for avslutning:</label>
+            <input type="date" id="finishDateInput">
+            <div style="display: flex; gap: 10px; margin-top:20px;">
+                <button style="background: var(--accent);" onclick="confirmFinish()">Bekreft avslutning</button>
+                <button style="background: var(--gray);" onclick="closeFinishModal()">Avbryt</button>
             </div>
-            <div class="form-row">
-                <div class="form-group"><label>Type Plan</label>
-                    <select id="plan" style="height:35px; background-color: white;">
-                        <option value="">-- Velg --</option>
-                        <option value="Skolemiljøsak">Skolemiljøsak</option>
-                        <option value="Skolefravær">Skolefravær</option>
-                        <option value="Engstlighet">Engstlighet</option>
-                        <option value="Elevkonflikter">Elevkonflikter</option>
-                        <option value="Samtaler">Samtaler</option>
-                        <option value="Annet">Annet</option>
-                    </select>
+        </div>
+    </div>
+
+    <div id="planModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="modalTitle" style="margin-top:0; color: var(--primary);">Plan Detaljer</h3>
+            <input type="hidden" id="modalKey">
+            <label>Utfyllende notater:</label>
+            <textarea id="modalEkstraNotat" style="height: 180px; margin-bottom: 15px;" placeholder="Skriv her..."></textarea>
+            <div style="display: flex; gap: 10px;">
+                <button style="background: var(--accent);" onclick="savePopup()">Lagre og lukk</button>
+                <button style="background: var(--gray);" onclick="closePopup()">Avbryt</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="eventModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="eventModalTitle" style="margin-top:0;">Ny hendelse</h3>
+            <input type="hidden" id="eventStudentKey">
+            <label>Type hendelse</label>
+            <select id="eventModalType"><option value="mote">📅 Ekstra Møte</option><option value="oppfolging">📝 Ekstra Oppfølging</option></select>
+            <label>Dato</label><input type="date" id="eventModalDate">
+            <label>Info / Klokkeslett</label><input type="text" id="eventModalInfo">
+            <div style="display: flex; gap: 10px; margin-top:20px;">
+                <button style="background: var(--accent);" onclick="saveExtraEvent()">Lagre</button>
+                <button style="background: var(--gray);" onclick="closeEventModal()">Avbryt</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="layout">
+        <aside>
+            <div class="card">
+                <h3 id="formTitle" style="margin:0; font-size: 1.1rem;">Saksbehandling</h3>
+                <input type="hidden" id="editKey"> 
+                <div class="form-row">
+                    <div class="form-group" style="flex: 2;"><label>Elevens Navn</label><input type="text" id="navn"></div>
+                    <div class="form-group"><label>Klasse</label><input type="text" id="klasse"></div>
                 </div>
-                <div class="form-group"><label>Opprettet</label><input type="date" id="opprettet"></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Type Plan</label>
+                        <select id="plan" style="height:35px; background-color: white;">
+                            <option value="">-- Velg --</option>
+                            <option value="Skolemiljøsak">Skolemiljøsak</option>
+                            <option value="Skolefravær">Skolefravær</option>
+                            <option value="Engstlighet">Engstlighet</option>
+                            <option value="Elevkonflikter">Elevkonflikter</option>
+                            <option value="Samtaler">Samtaler</option>
+                            <option value="Annet">Annet</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Opprettet</label><input type="date" id="opprettet"></div>
+                </div>
+                <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
+                <label>Oppfølging (Dato)</label><input type="date" id="oppfolgingDato">
+                <textarea id="oppfolgingKommentar" placeholder="Beskrivelse"></textarea>
+                <div class="form-row">
+                    <div class="form-group"><label>Neste Møte</label><input type="date" id="nesteMoteDato"></div>
+                    <div class="form-group"><label>Tid</label><input type="time" id="nesteMoteTid"></div>
+                </div>
+                <button style="background:var(--accent); margin-top:15px;" id="saveBtn" onclick="lagreData()">Lagre til Skyen</button>
+                <button id="clearBtn" onclick="nullstill()" style="background:var(--gray); margin-top:5px;">Tøm felt</button>
+                <button id="cancelEditBtn" onclick="nullstill()" style="background:var(--red); margin-top:5px; display:none;">Avbryt</button>
             </div>
-            <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
-            <label>Oppfølging (Dato)</label><input type="date" id="oppfolgingDato">
-            <textarea id="oppfolgingKommentar" placeholder="Beskrivelse"></textarea>
-            <div class="form-row">
-                <div class="form-group"><label>Neste Møte</label><input type="date" id="nesteMoteDato"></div>
-                <div class="form-group"><label>Tid</label><input type="time" id="nesteMoteTid"></div>
-            </div>
-            <button style="background:var(--accent); margin-top:15px;" id="saveBtn" onclick="lagreData()">Lagre til Skyen</button>
-            <button id="clearBtn" onclick="nullstill()" style="background:var(--gray); margin-top:5px;">Tøm felt</button>
-            <button id="cancelEditBtn" onclick="nullstill()" style="background:var(--red); margin-top:5px; display:none;">Avbryt</button>
-        </div>
-    </aside>
+        </aside>
 
-    <main>
-        <div class="card">
-            <div class="calendar-header">
-                <button onclick="changeMonth(-1)" style="width:40px;">&lt;</button>
-                <h3 id="monthDisplay" style="margin:0;">Laster...</h3>
-                <button onclick="changeMonth(1)" style="width:40px;">&gt;</button>
+        <main>
+            <div class="card">
+                <div class="calendar-header">
+                    <button onclick="changeMonth(-1)" style="width:40px;">&lt;</button>
+                    <h3 id="monthDisplay" style="margin:0;">Laster...</h3>
+                    <button onclick="changeMonth(1)" style="width:40px;">&gt;</button>
+                </div>
+                <div class="calendar-grid" id="calendarGrid"></div>
+                <div id="selectedDateContainer" class="event-viewer">
+                    <strong id="selectedDateText" style="display:block; margin-bottom:10px; color: var(--primary); border-bottom: 2px solid var(--blue); padding-bottom: 5px;">Agenda</strong>
+                    <div id="eventList"><i>Klikk på en dato...</i></div>
+                </div>
             </div>
-            <div class="calendar-grid" id="calendarGrid"></div>
-            <div id="selectedDateContainer" class="event-viewer">
-                <strong id="selectedDateText" style="display:block; margin-bottom:10px; color: var(--primary); border-bottom: 2px solid var(--blue); padding-bottom: 5px;">Agenda</strong>
-                <div id="eventList"><i>Klikk på en dato...</i></div>
+        </main>
+
+        <aside>
+            <div class="card">
+                <h3 style="margin-top:0; border-bottom: 2px solid var(--orange); padding-bottom: 8px; font-size: 1rem;">Neste 4 gjøremål</h3>
+                <div id="chronologicalTimeline" class="timeline-container"><i>Laster...</i></div>
             </div>
-        </div>
-    </main>
+        </aside>
 
-    <div class="card">
-        <h3 style="margin-top:0; border-bottom: 2px solid var(--orange); padding-bottom: 8px; font-size: 1rem;">Neste 4 gjøremål</h3>
-        <div id="chronologicalTimeline" class="timeline-container"><i>Laster...</i></div>
-    </div>
-
-    <div class="card full-width">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <h3 style="margin:0;">Saksliste</h3>
-            <button onclick="genererRapport()" style="width:auto; padding:8px 15px; background:var(--primary); font-size:0.8rem;">📄 Generer Rapport</button>
-        </div>
-        <div style="overflow-x:auto;">
-            <table>
-                <thead>
-                    <tr>
-                        <th class="sortable" onclick="sortTable('klasse')">Elev & Klasse</th>
-                        <th class="sortable" onclick="sortTable('plan')">Type Plan</th>
-                        <th class="sortable" onclick="sortTable('opprettet')">Opprettet</th>
-                        <th class="sortable" onclick="sortTable('oppfolgingDato')">Oppfølging</th>
-                        <th class="sortable" onclick="sortTable('nesteMoteDato')">Neste møte</th>
-                        <th>Valg</th>
-                    </tr>
-                </thead>
-                <tbody id="mainTable"></tbody>
-            </table>
+        <div class="card full-width">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h3 style="margin:0;">Saksliste</h3>
+                <button onclick="genererRapport()" style="width:auto; padding:8px 15px; background:var(--primary); font-size:0.8rem;">📄 Generer Rapport</button>
+            </div>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="sortable" onclick="sortTable('klasse')">Elev & Klasse</th>
+                            <th class="sortable" onclick="sortTable('plan')">Type Plan</th>
+                            <th class="sortable" onclick="sortTable('opprettet')">Opprettet</th>
+                            <th class="sortable" onclick="sortTable('oppfolgingDato')">Oppfølging</th>
+                            <th class="sortable" onclick="sortTable('nesteMoteDato')">Neste møte</th>
+                            <th>Valg</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mainTable"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
+
+</body>
+</html>
 
 <script>
     const firebaseConfig = { apiKey: "AIzaSyBDZFZl-F8bUyAbwQU_yOZHgUYMA3XiB-0", authDomain: "sosped-haanes.firebaseapp.com", databaseURL: "https://sosped-haanes-default-rtdb.europe-west1.firebasedatabase.app/", projectId: "sosped-haanes" };
