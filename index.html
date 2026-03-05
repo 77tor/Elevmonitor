@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ElevMonitor Pro - Kode 7 (Secure)</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
+
+    <style>
+        :root { --primary: #2c3e50; --accent: #27ae60; --bg: #f4f7f6; --white: #ffffff; --blue: #3498db; --orange: #f39c12; --red: #e74c3c; --gray: #95a5a6; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); margin: 0; padding: 15px; color: #333; }
+        
+        /* Logg inn skjerm */
+        #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh; }
+        #mainApp { display: none; } /* Skjult som standard */
+
+        .layout { display: grid; grid-template-columns: 320px 1fr 350px; gap: 15px; align-items: start; }
+        .full-width { grid-column: 1 / -1; }
+        .card { background: var(--white); padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; }
+        
+        header { display:flex; justify-content:space-between; align-items:center; background: var(--primary); color: white; padding: 8px 20px; border-radius: 8px; margin-bottom: 15px; }
+        
+        button { background: var(--primary); color: white; cursor: pointer; border: none; font-weight: bold; padding: 10px; border-radius: 4px; }
+        .btn-login { background: var(--white); color: var(--primary); padding: 10px 20px; font-size: 1rem; }
+        .btn-logout { background: rgba(255,255,255,0.2); font-size: 0.7rem; padding: 5px 10px; margin-left: 10px; }
+
+        /* Gjenbruker resten av stilene fra Kode 6 */
+        .form-row { display: flex; gap: 8px; }
+        .form-group { flex: 1; }
+        aside label { display: block; margin-top: 8px; font-weight: 600; font-size: 0.8rem; }
+        aside input, aside textarea, aside select { width: 100%; padding: 8px; margin-top: 2px; border: 1px solid #ddd; border-radius: 4px; }
+        
+        table { width: 100%; border-collapse: collapse; background: white; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(5, 1fr) 0.6fr 0.6fr; gap: 2px; }
+        .cal-cell { height: 38px; border: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; font-size: 0.8rem; }
+        .cal-cell.today { border: 2px solid var(--orange); font-weight: bold; }
+        .timeline-row { display: flex; flex-direction: column; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .timeline-date { font-weight: bold; font-size: 0.8rem; background: #eee; padding: 2px 6px; border-radius: 4px; align-self: flex-start; }
+        .type-mote { background: #d4e6f1; color: var(--blue); padding: 2px 4px; border-radius: 3px; font-size: 0.6rem; font-weight: bold; }
+        .type-oppf { background: #fef5e7; color: var(--orange); padding: 2px 4px; border-radius: 3px; font-size: 0.6rem; font-weight: bold; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: white; padding: 20px; border-radius: 8px; width: 400px; }
+    </style>
+</head>
+<body>
+
+<div id="loginScreen">
+    <div class="card" style="text-align: center;">
+        <h2>ElevMonitor Pro</h2>
+        <p>Vennligst logg inn for å få tilgang til elevdata.</p>
+        <button class="btn-login" onclick="loggInn()">Logg inn med Google</button>
+    </div>
+</div>
+
+<div id="mainApp">
+    <header>
+        <div style="display:flex; align-items:baseline; gap: 15px;">
+            <h2 style="margin:0; font-size: 1.2rem;">ElevMonitor Cloud</h2>
+            <span id="userEmail" style="font-size: 0.75rem; opacity: 0.8;"></span>
+            <button class="btn-logout" onclick="loggUt()">Logg ut</button>
+        </div>
+        <div id="dateNow" style="font-size: 0.9rem;"></div>
+    </header>
+
+    <div class="layout">
+        <aside>
+            <div class="card">
+                <h3>Saksbehandling</h3>
+                <input type="hidden" id="editKey"> 
+                <div class="form-row"><div class="form-group"><label>Navn</label><input type="text" id="navn"></div><div class="form-group"><label>Klasse</label><input type="text" id="klasse"></div></div>
+                <label>Plan</label><select id="plan"><option value="Skolemiljøsak">Skolemiljøsak</option><option value="Skolefravær">Skolefravær</option><option value="Annet">Annet</option></select>
+                <label>Opprettet</label><input type="date" id="opprettet">
+                <label>Oppfølging</label><input type="date" id="oppfolgingDato"><textarea id="oppfolgingKommentar"></textarea>
+                <div class="form-row"><div class="form-group"><label>Møte</label><input type="date" id="nesteMoteDato"></div><div class="form-group"><label>Tid</label><input type="time" id="nesteMoteTid"></div></div>
+                <button style="background:var(--accent); margin-top:10px; width:100%" onclick="lagreData()">Lagre</button>
+                <button onclick="nullstill()" style="background:var(--gray); margin-top:5px; width:100%">Tøm</button>
+            </div>
+        </aside>
+
+        <main>
+            <div class="card">
+                <div class="calendar-header"><button onclick="changeMonth(-1)">&lt;</button><h3 id="monthDisplay"></h3><button onclick="changeMonth(1)">&gt;</button></div>
+                <div class="calendar-grid" id="calendarGrid"></div>
+                <div class="event-viewer" id="selectedDateContainer">
+                    <strong id="selectedDateText">Agenda</strong>
+                    <div id="eventList"></div>
+                </div>
+            </div>
+        </main>
+
+        <div class="card">
+            <h3>Neste 4 gjøremål</h3>
+            <div id="chronologicalTimeline"></div>
+        </div>
+
+        <div class="card full-width">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3>Saksliste</h3>
+                <button onclick="genererRapport()">📄 Rapport</button>
+            </div>
+            <table>
+                <thead><tr><th>Elev</th><th>Plan</th><th>Opprettet</th><th>Oppfølging</th><th>Møte</th><th>Valg</th></tr></thead>
+                <tbody id="mainTable"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="planModal" class="modal-overlay"><div class="modal-content"><h3 id="modalTitle"></h3><textarea id="modalEkstraNotat" style="width:100%; height:150px;"></textarea><button onclick="savePopup()">Lagre</button><button onclick="closePopup()">Lukk</button></div></div>
+<div id="eventModal" class="modal-overlay"><div class="modal-content"><h3>Ny hendelse</h3><input type="hidden" id="eventStudentKey"><select id="eventModalType"><option value="mote">Møte</option><option value="oppfolging">Oppfølging</option></select><input type="date" id="eventModalDate"><input type="text" id="eventModalInfo"><button onclick="saveExtraEvent()">Lagre</button><button onclick="closeEventModal()">Avbryt</button></div></div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyBDZFZl-F8bUyAbwQU_yOZHgUYMA3XiB-0",
+        authDomain: "sosped-haanes.firebaseapp.com",
+        databaseURL: "https://sosped-haanes-default-rtdb.europe-west1.firebasedatabase.app/",
+        projectId: "sosped-haanes",
+    };
+    firebase.initializeApp(firebaseConfig);
+    
+    const db = firebase.database();
+    const auth = firebase.auth();
+    const provider = new firebase.auth.GoogleAuthProvider();
+
+    let localDb = {}; 
+    let currentViewDate = new Date(); 
+    let selectedDateStr = "";
+
+    // OVERVÅK INNLOGGING
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            document.getElementById('userEmail').innerText = user.email;
+            // Start lytting på data når logget inn
+            db.ref('elever').on('value', (snapshot) => {
+                localDb = snapshot.val() || {};
+                updateAll();
+            });
+        } else {
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('mainApp').style.display = 'none';
+        }
+    });
+
+    function loggInn() { auth.signInWithPopup(provider).catch(e => alert("Feil: " + e.message)); }
+    function loggUt() { auth.signOut(); }
+
+    function updateAll() { updateTable(); renderCalendar(); updateChronologicalTimeline(); }
+
+    // (Her fortsetter alle funksjonene fra Kode 6: updateTable, renderCalendar, exportToOutlook, etc.)
+    // Merk: Bruk db.ref('elever') i stedet for dbRef for å være konsistent
+    
+    function updateTable() {
+        const table = document.getElementById('mainTable');
+        table.innerHTML = Object.keys(localDb).map(key => {
+            const s = localDb[key];
+            const isFin = s.status === 'avsluttet';
+            return `<tr class="${isFin?'row-finished':''}">
+                <td><strong>${s.navn}</strong><br><small>${s.klasse || '-'}</small></td>
+                <td><span style="color:var(--blue);cursor:pointer" onclick="openPopup('${key}')">${s.plan}</span></td>
+                <td>${formatDate(s.opprettet)}</td>
+                <td>${formatDate(s.oppfolgingDato)}</td>
+                <td>${formatDate(s.nesteMoteDato)}</td>
+                <td>
+                    <button onclick="rediger('${key}')">Endre</button>
+                    <button onclick="slett('${key}')" style="color:var(--red)">Slett</button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    function updateChronologicalTimeline() {
+        const timeline = document.getElementById('chronologicalTimeline');
+        let allEvents = [];
+        Object.values(localDb).forEach(s => {
+            if(s.status === 'avsluttet') return;
+            const studentInfo = s.navn + (s.klasse ? ` (${s.klasse})` : '');
+            if(s.nesteMoteDato && !s.moteFullfort) allEvents.push({ date: s.nesteMoteDato, type: 'mote', name: studentInfo, info: s.nesteMoteTid || '' });
+            if(s.oppfolgingDato && !s.oppfolgingFullfort) allEvents.push({ date: s.oppfolgingDato, type: 'oppfolging', name: studentInfo, info: s.oppfolgingKommentar || '' });
+        });
+        allEvents.sort((a, b) => a.date.localeCompare(b.date));
+        timeline.innerHTML = allEvents.slice(0, 4).map(ev => `
+            <div class="timeline-row">
+                <div class="timeline-date">${formatDate(ev.date)}</div>
+                <div class="timeline-body">
+                    <span class="${ev.type==='mote'?'type-mote':'type-oppf'}">${ev.type==='mote'?'📅':'📝'}</span>
+                    <strong>${ev.name}</strong><br>${ev.info}
+                </div>
+            </div>`).join('') || "<i>Ingen planer.</i>";
+    }
+
+    function lagreData() {
+        const k = document.getElementById('editKey').value;
+        const data = {
+            navn: document.getElementById('navn').value,
+            klasse: document.getElementById('klasse').value,
+            plan: document.getElementById('plan').value,
+            opprettet: document.getElementById('opprettet').value || new Date().toISOString().split('T')[0],
+            oppfolgingDato: document.getElementById('oppfolgingDato').value,
+            oppfolgingKommentar: document.getElementById('oppfolgingKommentar').value,
+            nesteMoteDato: document.getElementById('nesteMoteDato').value,
+            nesteMoteTid: document.getElementById('nesteMoteTid').value,
+            status: 'aktiv'
+        };
+        if(!data.navn) return alert("Navn mangler");
+        k ? db.ref('elever').child(k).update(data) : db.ref('elever').push(data);
+        nullstill();
+    }
+
+    function slett(k) { if(confirm("Slette?")) db.ref('elever').child(k).remove(); }
+    function formatDate(s) { return s ? s.split('-').reverse().join('.') : "-"; }
+    function nullstill() { document.getElementById('editKey').value = ""; document.querySelectorAll('aside input, aside textarea').forEach(i => i.value = ""); }
+    function changeMonth(v) { currentViewDate.setMonth(currentViewDate.getMonth() + v); renderCalendar(); }
+    
+    function renderCalendar() {
+        const grid = document.getElementById('calendarGrid'); grid.innerHTML = '';
+        const y = currentViewDate.getFullYear(), m = currentViewDate.getMonth();
+        document.getElementById('monthDisplay').innerText = new Intl.DateTimeFormat('no-NO', {month:'long', year:'numeric'}).format(currentViewDate);
+        ['M','T','O','T','F','L','S'].forEach(d => grid.innerHTML += `<div style="text-align:center;font-weight:bold;font-size:0.7rem">${d}</div>`);
+        const first = (new Date(y, m, 1).getDay() || 7) - 1;
+        for(let i=0; i<first; i++) grid.innerHTML += `<div></div>`;
+        for(let d=1; d<=new Date(y, m+1, 0).getDate(); d++) {
+            const dStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            grid.innerHTML += `<div class="cal-cell ${new Date().toISOString().split('T')[0]===dStr?'today':''}" onclick="selectedDateStr='${dStr}'; updateAll()">${d}</div>`;
+        }
+    }
+
+    document.getElementById('dateNow').innerText = new Date().toLocaleDateString('no-NO', {weekday:'long', day:'numeric', month:'long'});
+    renderCalendar();
+</script>
+</body>
+</html>
