@@ -133,16 +133,20 @@
 
 <div id="mainApp">
 
-    <header class="card" style="display:flex; justify-content:space-between; align-items:center; background: var(--primary); color: white; padding: 8px 20px; margin-bottom: 15px;">
-        <div style="display:flex; align-items:baseline; gap: 15px;">
-            <h2 style="margin:0; font-size: 1.2rem;">ElevMonitor Cloud</h2>
-            <span id="syncStatus" style="font-size: 0.75rem; opacity: 0.8;">Kobler til...</span>
-        </div>
-        <div style="display:flex; align-items:center; gap:15px;">
-            <div id="dateNow" style="font-size: 0.9rem; font-weight: 500;"></div>
-            <button onclick="loggUt()" style="width:auto; background:rgba(255,255,255,0.1); padding:5px 10px; font-size:0.7rem;">Logg ut</button>
-        </div>
-    </header>
+<header class="card" style="display:flex; justify-content:space-between; align-items:center; background: var(--primary); color: white; padding: 8px 20px; margin-bottom: 15px;">
+    <div style="display:flex; align-items:center; gap: 10px;"> <h2 style="margin:0; font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">
+            <img src="monitor_ikon.png" alt="Ikon" style="height: 1.2rem; width: auto;">
+            ElevMonitor Cloud
+        </h2>
+        
+        <span id="syncStatus" style="font-size: 0.75rem; opacity: 0.8;">Kobler til...</span>
+    </div>
+    
+    <div style="display:flex; align-items:center; gap:15px;">
+        <div id="dateNow" style="font-size: 0.9rem; font-weight: 500;"></div>
+        <button onclick="loggUt()" style="width:auto; background:rgba(255,255,255,0.1); padding:5px 10px; font-size:0.7rem;">Logg ut</button>
+    </div>
+</header>
 
     <div id="finishModal" class="modal-overlay">
         <div class="modal-content">
@@ -615,6 +619,7 @@
 </body>
 
 </html>
+
 
 
 
