@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ElevMonitor Pro - Kode 8</title>
+    <title>ElevMonitor Pro - Kode 9</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
@@ -36,7 +36,6 @@
         aside input, aside textarea, aside select { padding: 8px; margin-top: 2px; font-size: 0.85rem; }
         aside textarea { height: 50px; resize: vertical; }
         
-        /* Spesialfelt for Skolemiljøsak */
         #skolemiljoFields { 
             background: #fdf2f2; 
             padding: 10px; 
@@ -46,7 +45,6 @@
             display: none; 
         }
 
-        /* Kalender */
         .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .calendar-header h3 { font-size: 1rem; }
         .calendar-grid { display: grid; grid-template-columns: repeat(5, 1fr) 0.6fr 0.6fr; gap: 2px; border: 1px solid #eee; }
@@ -61,7 +59,6 @@
         .dots-row { display: flex; gap: 1px; margin-top: 2px; justify-content: center; min-height: 4px; flex-wrap: wrap; padding: 0 2px; }
         .dot { width: 4px; height: 4px; background: var(--blue); border-radius: 50%; }
 
-        /* Agenda under kalender */
         .event-viewer { margin-top: 15px; padding: 12px; background: #ebf5fb; border-left: 5px solid var(--blue); border-radius: 4px; }
         .agenda-item { padding: 8px 0; border-bottom: 1px solid #d4e6f1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.85rem; }
         .agenda-tag { font-size: 0.6rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; background: #fff; border: 1px solid #ccc; white-space: nowrap; }
@@ -317,28 +314,50 @@
             th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 13px; }
             th { background: #f8f9fa; font-weight: bold; }
             .ap-info { color: #991b1b; font-size: 11px; margin-bottom: 5px; display: block; font-weight: bold; }
-            .avsluttet-rad { color: #777; font-style: italic; }
+            .avsluttet-rad { color: #777; }
             @media print { .no-print { display: none; } }
         </style></head><body>
         <h1>Saksrapport - ${datoNå}</h1>
         <h2>AKTIVE PLANER (Fordelt på type)</h2>`;
 
+        const renderTableRows = (saker) => {
+            let html = "";
+            saker.forEach(s => {
+                let apRapport = s.apStart ? `<span class="ap-info">📄 Aktivitetsplan: ${formatDate(s.apStart)}${s.apSlutt ? ' til ' + formatDate(s.apSlutt) : ' (Aktiv)'}</span>` : '';
+                
+                // Samler all historikk for rapporten
+                let oppfInfo = `${apRapport}${formatDate(s.oppfolgingDato)}<br><small>${s.oppfolgingKommentar || ''}</small>`;
+                if (s.historikk && s.historikk.length > 0) {
+                    s.historikk.filter(h => h.type === 'oppfolging').forEach(h => {
+                        oppfInfo += `<br>• ${formatDate(h.dato)}: <small>${h.info || ''}</small>`;
+                    });
+                }
+
+                html += `<tr><td><strong>${s.navn}</strong></td><td>${s.klasse || '-'}</td><td>${formatDate(s.opprettet)}</td><td>${oppfInfo}</td><td>${formatDate(s.nesteMoteDato)} ${s.nesteMoteTid || ''}</td></tr>`;
+            });
+            return html;
+        };
+
         typer.sort().forEach(type => {
             const saker = aktive.filter(s => (s.plan || 'Uspesifisert') === type);
             if(saker.length > 0) {
                 rapportHtml += `<h3>${type}</h3><table><thead><tr><th style="width:20%">Navn</th><th style="width:10%">Klasse</th><th style="width:15%">Opprettet</th><th style="width:25%">Oppfølging</th><th style="width:30%">Neste møte</th></tr></thead><tbody>`;
-                saker.forEach(s => {
-                    let apRapport = s.apStart ? `<span class="ap-info">📄 Aktivitetsplan: ${formatDate(s.apStart)}${s.apSlutt ? ' til ' + formatDate(s.apSlutt) : ' (Aktiv)'}</span>` : '';
-                    rapportHtml += `<tr><td><strong>${s.navn}</strong></td><td>${s.klasse || '-'}</td><td>${formatDate(s.opprettet)}</td><td>${apRapport}${formatDate(s.oppfolgingDato)}<br><small>${s.oppfolgingKommentar || ''}</small></td><td>${formatDate(s.nesteMoteDato)} ${s.nesteMoteTid || ''}</td></tr>`;
-                });
+                rapportHtml += renderTableRows(saker);
                 rapportHtml += `</tbody></table>`;
             }
         });
 
         if(avsluttede.length > 0) {
-            rapportHtml += `<h2>AVSLUTTEDE / PASSIVE PLANER</h2><table><thead><tr><th>Navn</th><th>Klasse</th><th>Type Plan</th><th>Opprettet</th><th>Avsluttet dato</th></tr></thead><tbody>`;
+            rapportHtml += `<h2>AVSLUTTEDE / PASSIVE PLANER</h2><table><thead><tr><th style="width:20%">Navn</th><th style="width:10%">Klasse</th><th style="width:15%">Opprettet / Avsluttet</th><th style="width:25%">Siste Oppfølging</th><th style="width:30%">Type Plan</th></tr></thead><tbody>`;
             avsluttede.sort((a,b) => (b.avsluttetDato || '').localeCompare(a.avsluttetDato || '')).forEach(s => {
-                rapportHtml += `<tr class="avsluttet-rad"><td>${s.navn}</td><td>${s.klasse || '-'}</td><td>${s.plan || '-'}</td><td>${formatDate(s.opprettet)}</td><td>${formatDate(s.avsluttetDato)}</td></tr>`;
+                let apRapport = s.apStart ? `<span class="ap-info">📄 Aktivitetsplan: ${formatDate(s.apStart)} - ${formatDate(s.apSlutt)}</span>` : '';
+                let oppfInfo = `${apRapport}${formatDate(s.oppfolgingDato)}<br><small>${s.oppfolgingKommentar || ''}</small>`;
+                if (s.historikk && s.historikk.length > 0) {
+                    s.historikk.filter(h => h.type === 'oppfolging').forEach(h => {
+                        oppfInfo += `<br>• ${formatDate(h.dato)}: <small>${h.info || ''}</small>`;
+                    });
+                }
+                rapportHtml += `<tr class="avsluttet-rad"><td>${s.navn}</td><td>${s.klasse || '-'}</td><td>O: ${formatDate(s.opprettet)}<br>A: <strong>${formatDate(s.avsluttetDato)}</strong></td><td>${oppfInfo}</td><td>${s.plan || '-'}</td></tr>`;
             });
             rapportHtml += `</tbody></table>`;
         }
@@ -362,14 +381,11 @@
         document.getElementById('finishKey').value = k;
         document.getElementById('finishNameText').innerText = "Hva ønsker du å gjøre for " + s.navn + "?";
         document.getElementById('finishDateInput').value = new Date().toISOString().split('T')[0];
-        
-        // Vis "Kun avslutt Aktivitetsplan" hvis saken har en aktivitetsplan som ikke er avsluttet
         if (s.apStart && !s.apSlutt) {
             document.getElementById('finishOnlyAPBtn').style.display = "block";
         } else {
             document.getElementById('finishOnlyAPBtn').style.display = "none";
         }
-        
         document.getElementById('finishModal').style.display = "flex";
     }
     function closeFinishModal() { document.getElementById('finishModal').style.display = "none"; }
@@ -415,7 +431,7 @@
             oppfHtml += `</div>`;
             let moteHtml = `<div class="info-container">`;
             if(s.nesteMoteDato) { moteHtml += `<div class="info-row ${s.moteFullfort ? 'dimmed' : ''}"><button class="check-btn ${s.moteFullfort ? 'checked' : ''}" onclick="toggleMainDone('${s.key}', 'mote')">✔️</button> <button class="btn-outlook-inline" onclick="exportToOutlook('${s.navn}', '${s.klasse || ''}', '${s.plan || ''}', '${s.nesteMoteDato}', '${s.nesteMoteTid || '08:00'}')">📅</button> <strong>${formatDate(s.nesteMoteDato)} ${s.nesteMoteTid || ''}</strong> <button class="delete-inline-btn" onclick="deleteEvent('${s.key}', 'main-mote')">🗑️</button></div>`; }
-            hist.filter(h => h.type === 'mote').forEach(h => { moteHtml += `<div class="info-row ${h.ferdig ? 'dimmed' : ''}"><button class="check-btn ${h.ferdig ? 'checked' : ''}" onclick="toggleExtraDone('${s.key}', ${h.id})">✔️</button> <button class="btn-outlook-inline" onclick="exportToOutlook('${s.navn}', '${s.klasse || ''}', '${s.plan || ''}', '${h.dato}', '${h.info || '08:00'}')">📅</button> <strong>${formatDate(h.dato)} ${h.info || ''}</strong> <button class="delete-inline-btn" onclick="deleteEvent('${s.key}', ${h.id})">🗑️</button></div>`; });
+            hist.filter(h => h.type === 'mote').forEach(h => { moteHtml += `<div class="info-row ${h.ferdig ? 'dimmed' : ''}"><button class="check-btn ${h.ferdig ? 'checked' : ''}" onclick="toggleExtraDone('${s.key}', ${h.id})">✔️</button> <button class="btn-outlook-inline" onclick="exportToOutlook('${s.navn}', '${s.klasse || ''}', '${s.plan || ''}', '${h.dato}', '${h.info || '08:00'}')">📅</button> <strong>${formatDate(h.dato)} ${h.info || ''}</strong> <button class="delete-inline-btn" onclick="deleteEvent('${s.key}', 'main-mote')">🗑️</button></div>`; });
             moteHtml += `</div>`;
             let buttonsHtml = isFinished ? 
                 `<button class="btn-small btn-dimmed" onclick="toggleReopen('${s.key}')">Åpne sak</button> <button class="btn-small btn-dimmed" onclick="slett('${s.key}')" style="background:var(--red); color:white;">Slett</button> <span class="finish-date-text">Avsluttet: ${formatDate(s.avsluttetDato)}</span>` : 
@@ -563,23 +579,25 @@
     function eksporterTilExcel() {
         const items = Object.values(localDb);
         if (items.length === 0) return alert("Ingen data å eksportere");
-        let csv = "Navn;Klasse;Plan;Status;Dato;Type;Info/Kommentar;Fullført;AP Opprettet;AP Avsluttet\n";
+        let csv = "Navn;Klasse;Plan;Status;Dato;Type;Info/Kommentar;Fullført;AP Opprettet;AP Avsluttet;Avsluttet Saksdato\n";
         items.forEach(s => {
             const apS = s.apStart || ""; const apA = s.apSlutt || "";
-            if(s.oppfolgingDato) csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.oppfolgingDato};Oppfølging;${(s.oppfolgingKommentar||"").replace(/;/g, ",")};${s.oppfolgingFullfort ? 'JA' : 'NEI'};${apS};${apA}\n`;
-            if(s.nesteMoteDato) csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.nesteMoteDato};Møte;${s.nesteMoteTid||""};${s.moteFullfort ? 'JA' : 'NEI'};${apS};${apA}\n`;
+            const saksAvsluttet = s.avsluttetDato || "";
+            
+            if(s.oppfolgingDato) csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.oppfolgingDato};Oppfølging;${(s.oppfolgingKommentar||"").replace(/;/g, ",")};${s.oppfolgingFullfort ? 'JA' : 'NEI'};${apS};${apA};${saksAvsluttet}\n`;
+            if(s.nesteMoteDato) csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.nesteMoteDato};Møte;${s.nesteMoteTid||""};${s.moteFullfort ? 'JA' : 'NEI'};${apS};${apA};${saksAvsluttet}\n`;
             if(s.historikk && Array.isArray(s.historikk)) {
                 s.historikk.forEach(h => {
-                    csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${h.dato};${h.type==='mote'?'Ekstra Møte':'Ekstra Oppfølging'};${(h.info||"").replace(/;/g, ",")};${h.ferdig ? 'JA' : 'NEI'};${apS};${apA}\n`;
+                    csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${h.dato};${h.type==='mote'?'Ekstra Møte':'Ekstra Oppfølging'};${(h.info||"").replace(/;/g, ",")};${h.ferdig ? 'JA' : 'NEI'};${apS};${apA};${saksAvsluttet}\n`;
                 });
             }
-            if(!s.oppfolgingDato && !s.nesteMoteDato && (!s.historikk || s.historikk.length === 0)) csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.opprettet};Opprettet;-;-;${apS};${apA}\n`;
+            if(!s.oppfolgingDato && !s.nesteMoteDato && (!s.historikk || s.historikk.length === 0)) csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.opprettet};Opprettet;-;-;${apS};${apA};${saksAvsluttet}\n`;
         });
         const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
         link.setAttribute("href", url);
-        link.setAttribute("download", `ElevMonitor_Komplett_Eksport_${new Date().toLocaleDateString()}.csv`);
+        link.setAttribute("download", `ElevMonitor_Kode9_Eksport_${new Date().toLocaleDateString()}.csv`);
         link.click();
     }
 
