@@ -85,7 +85,6 @@
         .info-row { display: flex; align-items: center; gap: 4px; white-space: nowrap; font-size: 0.85rem; }
         .info-text { overflow: hidden; text-overflow: ellipsis; max-width: 150px; font-style: italic; color: #555; }
         
-        /* Aktivitetsplan badge i tabell */
         .ap-badge { font-size: 0.7rem; padding: 4px 6px; border-radius: 3px; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; display: block; margin-bottom: 5px; line-height: 1.4; }
         .ap-badge b { color: #000; }
 
@@ -140,13 +139,14 @@
 
     <div id="finishModal" class="modal-overlay">
         <div class="modal-content">
-            <h3 style="margin-top:0;">Avslutt sak</h3>
+            <h3 style="margin-top:0;">Avslutt valg</h3>
             <p id="finishNameText"></p>
             <input type="hidden" id="finishKey">
-            <label>Dato for avslutning:</label>
+            <label>Dato for utførelse:</label>
             <input type="date" id="finishDateInput">
-            <div style="display: flex; gap: 10px; margin-top:20px;">
-                <button style="background: var(--accent);" onclick="confirmFinish()">Bekreft avslutning</button>
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top:20px;">
+                <button id="finishOnlyAPBtn" style="background: var(--blue); display:none;" onclick="confirmFinishAP()">Kun avslutt Aktivitetsplan</button>
+                <button style="background: var(--accent);" onclick="confirmFinish()">Avslutt HELE saken</button>
                 <button style="background: var(--gray);" onclick="closeFinishModal()">Avbryt</button>
             </div>
         </div>
@@ -358,17 +358,34 @@
     function savePopup() { dbRef.child(document.getElementById('modalKey').value).update({ ekstraNotat: document.getElementById('modalEkstraNotat').value }).then(() => closePopup()); }
 
     function openFinishModal(k) {
+        const s = localDb[k];
         document.getElementById('finishKey').value = k;
-        document.getElementById('finishNameText').innerText = "Er du sikker på at du vil avslutte saken til " + localDb[k].navn + "?";
+        document.getElementById('finishNameText').innerText = "Hva ønsker du å gjøre for " + s.navn + "?";
         document.getElementById('finishDateInput').value = new Date().toISOString().split('T')[0];
+        
+        // Vis "Kun avslutt Aktivitetsplan" hvis saken har en aktivitetsplan som ikke er avsluttet
+        if (s.apStart && !s.apSlutt) {
+            document.getElementById('finishOnlyAPBtn').style.display = "block";
+        } else {
+            document.getElementById('finishOnlyAPBtn').style.display = "none";
+        }
+        
         document.getElementById('finishModal').style.display = "flex";
     }
     function closeFinishModal() { document.getElementById('finishModal').style.display = "none"; }
+    
     function confirmFinish() {
         const k = document.getElementById('finishKey').value;
         const d = document.getElementById('finishDateInput').value;
         if(!d) return alert("Velg en dato");
         dbRef.child(k).update({ status: 'avsluttet', avsluttetDato: d }).then(() => closeFinishModal());
+    }
+
+    function confirmFinishAP() {
+        const k = document.getElementById('finishKey').value;
+        const d = document.getElementById('finishDateInput').value;
+        if(!d) return alert("Velg en dato");
+        dbRef.child(k).update({ apSlutt: d }).then(() => closeFinishModal());
     }
 
     function toggleReopen(k) { if(confirm("Vil du gjenåpne saken?")) { dbRef.child(k).update({ status: 'aktiv', avsluttetDato: null }); } }
@@ -402,7 +419,7 @@
             moteHtml += `</div>`;
             let buttonsHtml = isFinished ? 
                 `<button class="btn-small btn-dimmed" onclick="toggleReopen('${s.key}')">Åpne sak</button> <button class="btn-small btn-dimmed" onclick="slett('${s.key}')" style="background:var(--red); color:white;">Slett</button> <span class="finish-date-text">Avsluttet: ${formatDate(s.avsluttetDato)}</span>` : 
-                `<button class="btn-small" style="background:var(--blue)" onclick="openEventModal('${s.key}')">+ Hendelse</button> <button class="btn-small" style="background:var(--orange)" onclick="rediger('${s.key}')">Endre</button> <button class="btn-small" style="background:var(--gray)" onclick="openFinishModal('${s.key}')">Avsluttet</button> <button class="btn-small" style="background:var(--red)" onclick="slett('${s.key}')">Slett</button>`;
+                `<button class="btn-small" style="background:var(--blue)" onclick="openEventModal('${s.key}')">+ Hendelse</button> <button class="btn-small" style="background:var(--orange)" onclick="rediger('${s.key}')">Endre</button> <button class="btn-small" style="background:var(--gray)" onclick="openFinishModal('${s.key}')">Avslutt</button> <button class="btn-small" style="background:var(--red)" onclick="slett('${s.key}')">Slett</button>`;
             return `<tr class="${isFinished ? 'row-finished' : ''}"><td><strong>${s.navn}</strong><br><small>${s.klasse || '-'}</small></td><td><span class="plan-clickable" onclick="openPopup('${s.key}')">${s.plan || 'Mangler'}</span></td><td>${formatDate(s.opprettet)}</td><td>${oppfHtml}</td><td>${moteHtml}</td><td><div class="action-btns">${buttonsHtml}</div></td></tr>`;
         }).join('');
     }
