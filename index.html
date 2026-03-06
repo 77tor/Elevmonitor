@@ -86,8 +86,8 @@
         .info-text { overflow: hidden; text-overflow: ellipsis; max-width: 150px; font-style: italic; color: #555; }
         
         /* Aktivitetsplan badge i tabell */
-        .ap-badge { font-size: 0.7rem; padding: 2px 5px; border-radius: 3px; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; display: inline-block; margin-top: 4px; }
-        .ap-badge.finished { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+        .ap-badge { font-size: 0.7rem; padding: 4px 6px; border-radius: 3px; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; display: block; margin-bottom: 5px; line-height: 1.4; }
+        .ap-badge b { color: #000; }
 
         .check-btn { background: #eee; color: #777; border: 1px solid #ccc; width: 18px; height: 18px; padding: 0; font-size: 10px; cursor: pointer; border-radius: 3px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
         .check-btn.checked { background: var(--accent); color: white; border-color: var(--accent); }
@@ -97,7 +97,6 @@
         .row-finished { color: #aaa !important; background-color: #fafafa; }
         .btn-dimmed { background: #eee !important; color: #999 !important; border: 1px solid #ddd !important; }
         
-        /* Tidslinje på høyre side */
         .timeline-container { max-height: 500px; overflow-y: auto; padding-right: 5px; }
         .timeline-row { display: flex; flex-direction: column; padding: 10px 0; border-bottom: 1px solid #eee; gap: 5px; }
         .timeline-date { font-weight: bold; color: var(--primary); font-size: 0.8rem; background: #eee; padding: 2px 6px; border-radius: 4px; align-self: flex-start; }
@@ -317,6 +316,7 @@
             table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
             th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 13px; }
             th { background: #f8f9fa; font-weight: bold; }
+            .ap-info { color: #991b1b; font-size: 11px; margin-bottom: 5px; display: block; font-weight: bold; }
             .avsluttet-rad { color: #777; font-style: italic; }
             @media print { .no-print { display: none; } }
         </style></head><body>
@@ -328,7 +328,8 @@
             if(saker.length > 0) {
                 rapportHtml += `<h3>${type}</h3><table><thead><tr><th style="width:20%">Navn</th><th style="width:10%">Klasse</th><th style="width:15%">Opprettet</th><th style="width:25%">Oppfølging</th><th style="width:30%">Neste møte</th></tr></thead><tbody>`;
                 saker.forEach(s => {
-                    rapportHtml += `<tr><td><strong>${s.navn}</strong></td><td>${s.klasse || '-'}</td><td>${formatDate(s.opprettet)}</td><td>${formatDate(s.oppfolgingDato)}<br><small>${s.oppfolgingKommentar || ''}</small></td><td>${formatDate(s.nesteMoteDato)} ${s.nesteMoteTid || ''}</td></tr>`;
+                    let apRapport = s.apStart ? `<span class="ap-info">📄 Aktivitetsplan: ${formatDate(s.apStart)}${s.apSlutt ? ' til ' + formatDate(s.apSlutt) : ' (Aktiv)'}</span>` : '';
+                    rapportHtml += `<tr><td><strong>${s.navn}</strong></td><td>${s.klasse || '-'}</td><td>${formatDate(s.opprettet)}</td><td>${apRapport}${formatDate(s.oppfolgingDato)}<br><small>${s.oppfolgingKommentar || ''}</small></td><td>${formatDate(s.nesteMoteDato)} ${s.nesteMoteTid || ''}</td></tr>`;
                 });
                 rapportHtml += `</tbody></table>`;
             }
@@ -386,11 +387,10 @@
             const isFinished = s.status === 'avsluttet';
             let oppfHtml = `<div class="info-container">`;
             
-            // Nytt: Vis Aktivitetsplan-info hvis den eksisterer
             if (s.apStart) {
-                const statusKlasse = s.apSlutt ? 'finished' : '';
-                const statusTekst = s.apSlutt ? `Løst: ${formatDate(s.apSlutt)}` : `Opprettet: ${formatDate(s.apStart)}`;
-                oppfHtml += `<div class="ap-badge ${statusKlasse}">📄 Aktivitetsplan | ${statusTekst}</div>`;
+                let apDisplay = `📄 Aktivitetsplan:<br><b>Oppr:</b> ${formatDate(s.apStart)}`;
+                if(s.apSlutt) apDisplay += ` | <b>Avsl:</b> ${formatDate(s.apSlutt)}`;
+                oppfHtml += `<div class="ap-badge">${apDisplay}</div>`;
             }
 
             if(s.oppfolgingDato) { oppfHtml += `<div class="info-row ${s.oppfolgingFullfort ? 'dimmed' : ''}"><button class="check-btn ${s.oppfolgingFullfort ? 'checked' : ''}" onclick="toggleMainDone('${s.key}', 'oppfolging')">✔️</button><strong>${formatDate(s.oppfolgingDato)}</strong> <span class="info-text">${s.oppfolgingKommentar || ''}</span> <button class="delete-inline-btn" onclick="deleteEvent('${s.key}', 'main-oppfolging')">🗑️</button></div>`; }
@@ -506,12 +506,9 @@
         document.getElementById('nesteMoteDato').value = s.nesteMoteDato || ""; 
         document.getElementById('nesteMoteTid').value = s.nesteMoteTid || ""; 
         document.getElementById('editKey').value = k;
-        
-        // Nytt: Håndter aktivitetsplan-datoer
         document.getElementById('apStart').value = s.apStart || "";
         document.getElementById('apSlutt').value = s.apSlutt || "";
         toggleSkolemiljo(s.plan);
-
         document.getElementById('saveBtn').innerText = "Oppdater"; document.getElementById('saveBtn').style.background = "var(--orange)"; document.getElementById('clearBtn').style.display = "none"; document.getElementById('cancelEditBtn').style.display = "block"; window.scrollTo(0,0);
     }
 
@@ -526,11 +523,8 @@
             oppfolgingKommentar: document.getElementById('oppfolgingKommentar').value, 
             nesteMoteDato: document.getElementById('nesteMoteDato').value, 
             nesteMoteTid: document.getElementById('nesteMoteTid').value, 
-            
-            // Nytt: Aktivitetsplan-data
             apStart: document.getElementById('apStart').value,
             apSlutt: document.getElementById('apSlutt').value,
-
             historikk: k ? (localDb[k].historikk || []) : [], 
             status: k ? (localDb[k].status || 'aktiv') : 'aktiv', 
             avsluttetDato: k ? (localDb[k].avsluttetDato || null) : null, 
@@ -552,35 +546,24 @@
     function eksporterTilExcel() {
         const items = Object.values(localDb);
         if (items.length === 0) return alert("Ingen data å eksportere");
-        
-        let csv = "Navn;Klasse;Plan;Status;Dato;Type;Info/Kommentar;Fullført;AP Start;AP Slutt\n";
-        
+        let csv = "Navn;Klasse;Plan;Status;Dato;Type;Info/Kommentar;Fullført;AP Opprettet;AP Avsluttet\n";
         items.forEach(s => {
-            if(s.oppfolgingDato) {
-                csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.oppfolgingDato};Oppfølging;${(s.oppfolgingKommentar||"").replace(/;/g, ",")};${s.oppfolgingFullfort ? 'JA' : 'NEI'};${s.apStart||""};${s.apSlutt||""}\n`;
-            }
-            if(s.nesteMoteDato) {
-                csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.nesteMoteDato};Møte;${s.nesteMoteTid||""};${s.moteFullfort ? 'JA' : 'NEI'};${s.apStart||""};${s.apSlutt||""}\n`;
-            }
+            const apS = s.apStart || ""; const apA = s.apSlutt || "";
+            if(s.oppfolgingDato) csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.oppfolgingDato};Oppfølging;${(s.oppfolgingKommentar||"").replace(/;/g, ",")};${s.oppfolgingFullfort ? 'JA' : 'NEI'};${apS};${apA}\n`;
+            if(s.nesteMoteDato) csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.nesteMoteDato};Møte;${s.nesteMoteTid||""};${s.moteFullfort ? 'JA' : 'NEI'};${apS};${apA}\n`;
             if(s.historikk && Array.isArray(s.historikk)) {
                 s.historikk.forEach(h => {
-                    csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${h.dato};${h.type==='mote'?'Ekstra Møte':'Ekstra Oppfølging'};${(h.info||"").replace(/;/g, ",")};${h.ferdig ? 'JA' : 'NEI'};${s.apStart||""};${s.apSlutt||""}\n`;
+                    csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${h.dato};${h.type==='mote'?'Ekstra Møte':'Ekstra Oppfølging'};${(h.info||"").replace(/;/g, ",")};${h.ferdig ? 'JA' : 'NEI'};${apS};${apA}\n`;
                 });
             }
-            if(!s.oppfolgingDato && !s.nesteMoteDato && (!s.historikk || s.historikk.length === 0)) {
-                csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.opprettet};Opprettet;-;-;${s.apStart||""};${s.apSlutt||""}\n`;
-            }
+            if(!s.oppfolgingDato && !s.nesteMoteDato && (!s.historikk || s.historikk.length === 0)) csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.opprettet};Opprettet;-;-;${apS};${apA}\n`;
         });
-
         const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
         link.setAttribute("href", url);
         link.setAttribute("download", `ElevMonitor_Komplett_Eksport_${new Date().toLocaleDateString()}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
     }
 
     document.getElementById('dateNow').innerText = new Intl.DateTimeFormat('no-NO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
