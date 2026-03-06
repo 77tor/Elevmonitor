@@ -36,6 +36,16 @@
         aside input, aside textarea, aside select { padding: 8px; margin-top: 2px; font-size: 0.85rem; }
         aside textarea { height: 50px; resize: vertical; }
         
+        /* Spesialfelt for Skolemiljøsak */
+        #skolemiljoFields { 
+            background: #fdf2f2; 
+            padding: 10px; 
+            border-radius: 4px; 
+            margin-top: 10px; 
+            border-left: 4px solid var(--red);
+            display: none; 
+        }
+
         /* Kalender */
         .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .calendar-header h3 { font-size: 1rem; }
@@ -75,6 +85,10 @@
         .info-row { display: flex; align-items: center; gap: 4px; white-space: nowrap; font-size: 0.85rem; }
         .info-text { overflow: hidden; text-overflow: ellipsis; max-width: 150px; font-style: italic; color: #555; }
         
+        /* Aktivitetsplan badge i tabell */
+        .ap-badge { font-size: 0.7rem; padding: 2px 5px; border-radius: 3px; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; display: inline-block; margin-top: 4px; }
+        .ap-badge.finished { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+
         .check-btn { background: #eee; color: #777; border: 1px solid #ccc; width: 18px; height: 18px; padding: 0; font-size: 10px; cursor: pointer; border-radius: 3px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
         .check-btn.checked { background: var(--accent); color: white; border-color: var(--accent); }
         .delete-inline-btn { color: var(--red); cursor: pointer; opacity: 0.4; font-size: 12px; padding: 2px; transition: 0.2s; border: none; background: transparent; width: auto; margin: 0 0 0 4px; display: inline; }
@@ -178,7 +192,7 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group"><label>Type Plan</label>
-                        <select id="plan" style="height:35px; background-color: white;">
+                        <select id="plan" onchange="toggleSkolemiljo(this.value)" style="height:35px; background-color: white;">
                             <option value="">-- Velg --</option>
                             <option value="Skolemiljøsak">Skolemiljøsak</option>
                             <option value="Skolefravær">Skolefravær</option>
@@ -190,6 +204,14 @@
                     </div>
                     <div class="form-group"><label>Opprettet</label><input type="date" id="opprettet"></div>
                 </div>
+
+                <div id="skolemiljoFields">
+                    <div class="form-row">
+                        <div class="form-group"><label>Aktivitetsplan (Fra)</label><input type="date" id="apStart"></div>
+                        <div class="form-group"><label>Aktivitetsplan (Til)</label><input type="date" id="apSlutt"></div>
+                    </div>
+                </div>
+
                 <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
                 <label>Oppfølging (Dato)</label><input type="date" id="oppfolgingDato">
                 <textarea id="oppfolgingKommentar" placeholder="Beskrivelse"></textarea>
@@ -275,6 +297,10 @@
     function loggInn() { auth.signInWithPopup(provider).catch(e => alert(e.message)); }
     function loggUt() { auth.signOut(); }
 
+    function toggleSkolemiljo(val) {
+        document.getElementById('skolemiljoFields').style.display = (val === "Skolemiljøsak") ? "block" : "none";
+    }
+
     function genererRapport() {
         const rapportVindu = window.open('', '_blank');
         const datoNå = new Date().toLocaleDateString('no-NO');
@@ -359,6 +385,14 @@
             const hist = s.historikk || [];
             const isFinished = s.status === 'avsluttet';
             let oppfHtml = `<div class="info-container">`;
+            
+            // Nytt: Vis Aktivitetsplan-info hvis den eksisterer
+            if (s.apStart) {
+                const statusKlasse = s.apSlutt ? 'finished' : '';
+                const statusTekst = s.apSlutt ? `Løst: ${formatDate(s.apSlutt)}` : `Opprettet: ${formatDate(s.apStart)}`;
+                oppfHtml += `<div class="ap-badge ${statusKlasse}">📄 Aktivitetsplan | ${statusTekst}</div>`;
+            }
+
             if(s.oppfolgingDato) { oppfHtml += `<div class="info-row ${s.oppfolgingFullfort ? 'dimmed' : ''}"><button class="check-btn ${s.oppfolgingFullfort ? 'checked' : ''}" onclick="toggleMainDone('${s.key}', 'oppfolging')">✔️</button><strong>${formatDate(s.oppfolgingDato)}</strong> <span class="info-text">${s.oppfolgingKommentar || ''}</span> <button class="delete-inline-btn" onclick="deleteEvent('${s.key}', 'main-oppfolging')">🗑️</button></div>`; }
             hist.filter(h => h.type === 'oppfolging').forEach(h => { oppfHtml += `<div class="info-row ${h.ferdig ? 'dimmed' : ''}"><button class="check-btn ${h.ferdig ? 'checked' : ''}" onclick="toggleExtraDone('${s.key}', ${h.id})">✔️</button><strong>${formatDate(h.dato)}</strong> <span class="info-text">${h.info || ''}</span> <button class="delete-inline-btn" onclick="deleteEvent('${s.key}', ${h.id})">🗑️</button></div>`; });
             oppfHtml += `</div>`;
@@ -462,46 +496,79 @@
     function sortTable(f) { currentSort.direction = (currentSort.field === f && currentSort.direction === 'asc') ? 'desc' : 'asc'; currentSort.field = f; updateTable(); }
 
     function rediger(k) {
-        const s = localDb[k]; document.getElementById('navn').value = s.navn; document.getElementById('klasse').value = s.klasse || ""; document.getElementById('plan').value = s.plan || ""; document.getElementById('opprettet').value = s.opprettet; document.getElementById('oppfolgingDato').value = s.oppfolgingDato || ""; document.getElementById('oppfolgingKommentar').value = s.oppfolgingKommentar || ""; document.getElementById('nesteMoteDato').value = s.nesteMoteDato || ""; document.getElementById('nesteMoteTid').value = s.nesteMoteTid || ""; document.getElementById('editKey').value = k;
+        const s = localDb[k]; 
+        document.getElementById('navn').value = s.navn; 
+        document.getElementById('klasse').value = s.klasse || ""; 
+        document.getElementById('plan').value = s.plan || ""; 
+        document.getElementById('opprettet').value = s.opprettet; 
+        document.getElementById('oppfolgingDato').value = s.oppfolgingDato || ""; 
+        document.getElementById('oppfolgingKommentar').value = s.oppfolgingKommentar || ""; 
+        document.getElementById('nesteMoteDato').value = s.nesteMoteDato || ""; 
+        document.getElementById('nesteMoteTid').value = s.nesteMoteTid || ""; 
+        document.getElementById('editKey').value = k;
+        
+        // Nytt: Håndter aktivitetsplan-datoer
+        document.getElementById('apStart').value = s.apStart || "";
+        document.getElementById('apSlutt').value = s.apSlutt || "";
+        toggleSkolemiljo(s.plan);
+
         document.getElementById('saveBtn').innerText = "Oppdater"; document.getElementById('saveBtn').style.background = "var(--orange)"; document.getElementById('clearBtn').style.display = "none"; document.getElementById('cancelEditBtn').style.display = "block"; window.scrollTo(0,0);
     }
 
     function lagreData() {
         const k = document.getElementById('editKey').value;
-        const data = { navn: document.getElementById('navn').value, klasse: document.getElementById('klasse').value, plan: document.getElementById('plan').value, opprettet: document.getElementById('opprettet').value || new Date().toISOString().split('T')[0], oppfolgingDato: document.getElementById('oppfolgingDato').value, oppfolgingKommentar: document.getElementById('oppfolgingKommentar').value, nesteMoteDato: document.getElementById('nesteMoteDato').value, nesteMoteTid: document.getElementById('nesteMoteTid').value, historikk: k ? (localDb[k].historikk || []) : [], status: k ? (localDb[k].status || 'aktiv') : 'aktiv', avsluttetDato: k ? (localDb[k].avsluttetDato || null) : null, oppfolgingFullfort: k ? (localDb[k].oppfolgingFullfort || false) : false, moteFullfort: k ? (localDb[k].moteFullfort || false) : false, ekstraNotat: k ? (localDb[k].ekstraNotat || "") : "" };
+        const data = { 
+            navn: document.getElementById('navn').value, 
+            klasse: document.getElementById('klasse').value, 
+            plan: document.getElementById('plan').value, 
+            opprettet: document.getElementById('opprettet').value || new Date().toISOString().split('T')[0], 
+            oppfolgingDato: document.getElementById('oppfolgingDato').value, 
+            oppfolgingKommentar: document.getElementById('oppfolgingKommentar').value, 
+            nesteMoteDato: document.getElementById('nesteMoteDato').value, 
+            nesteMoteTid: document.getElementById('nesteMoteTid').value, 
+            
+            // Nytt: Aktivitetsplan-data
+            apStart: document.getElementById('apStart').value,
+            apSlutt: document.getElementById('apSlutt').value,
+
+            historikk: k ? (localDb[k].historikk || []) : [], 
+            status: k ? (localDb[k].status || 'aktiv') : 'aktiv', 
+            avsluttetDato: k ? (localDb[k].avsluttetDato || null) : null, 
+            oppfolgingFullfort: k ? (localDb[k].oppfolgingFullfort || false) : false, 
+            moteFullfort: k ? (localDb[k].moteFullfort || false) : false, 
+            ekstraNotat: k ? (localDb[k].ekstraNotat || "") : "" 
+        };
         if(!data.navn) return alert("Navn mangler"); if(k) dbRef.child(k).update(data); else dbRef.push(data); nullstill();
     }
 
     function nullstill() {
-        document.getElementById('editKey').value = ""; document.querySelectorAll('aside input, aside textarea, aside select').forEach(el => el.value = ""); document.getElementById('opprettet').value = new Date().toISOString().split('T')[0];
+        document.getElementById('editKey').value = ""; 
+        document.querySelectorAll('aside input, aside textarea, aside select').forEach(el => el.value = ""); 
+        document.getElementById('opprettet').value = new Date().toISOString().split('T')[0];
+        document.getElementById('skolemiljoFields').style.display = "none";
         document.getElementById('saveBtn').innerText = "Lagre til Skyen"; document.getElementById('saveBtn').style.background = "var(--accent)"; document.getElementById('clearBtn').style.display = "block"; document.getElementById('cancelEditBtn').style.display = "none";
     }
 
-    // OPPDATERT FUNKSJON: EKSPORETR TIL EXCEL (Inkluderer nå alle hendelser fra historikk)
     function eksporterTilExcel() {
         const items = Object.values(localDb);
         if (items.length === 0) return alert("Ingen data å eksportere");
         
-        let csv = "Navn;Klasse;Plan;Status;Dato;Type;Info/Kommentar;Fullført\n";
+        let csv = "Navn;Klasse;Plan;Status;Dato;Type;Info/Kommentar;Fullført;AP Start;AP Slutt\n";
         
         items.forEach(s => {
-            // 1. Hoved-oppfølging
             if(s.oppfolgingDato) {
-                csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.oppfolgingDato};Oppfølging;${(s.oppfolgingKommentar||"").replace(/;/g, ",")};${s.oppfolgingFullfort ? 'JA' : 'NEI'}\n`;
+                csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.oppfolgingDato};Oppfølging;${(s.oppfolgingKommentar||"").replace(/;/g, ",")};${s.oppfolgingFullfort ? 'JA' : 'NEI'};${s.apStart||""};${s.apSlutt||""}\n`;
             }
-            // 2. Hoved-møte
             if(s.nesteMoteDato) {
-                csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.nesteMoteDato};Møte;${s.nesteMoteTid||""};${s.moteFullfort ? 'JA' : 'NEI'}\n`;
+                csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.nesteMoteDato};Møte;${s.nesteMoteTid||""};${s.moteFullfort ? 'JA' : 'NEI'};${s.apStart||""};${s.apSlutt||""}\n`;
             }
-            // 3. Alle ekstra hendelser fra historikk
             if(s.historikk && Array.isArray(s.historikk)) {
                 s.historikk.forEach(h => {
-                    csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${h.dato};${h.type==='mote'?'Ekstra Møte':'Ekstra Oppfølging'};${(h.info||"").replace(/;/g, ",")};${h.ferdig ? 'JA' : 'NEI'}\n`;
+                    csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${h.dato};${h.type==='mote'?'Ekstra Møte':'Ekstra Oppfølging'};${(h.info||"").replace(/;/g, ",")};${h.ferdig ? 'JA' : 'NEI'};${s.apStart||""};${s.apSlutt||""}\n`;
                 });
             }
-            // 4. Hvis saken ikke har noen datoer ennå, legg til en rad for selve saken
             if(!s.oppfolgingDato && !s.nesteMoteDato && (!s.historikk || s.historikk.length === 0)) {
-                csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.opprettet};Opprettet;-;-\n`;
+                csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.opprettet};Opprettet;-;-;${s.apStart||""};${s.apSlutt||""}\n`;
             }
         });
 
