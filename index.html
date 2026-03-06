@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ElevMonitor Pro - Kode 9</title>
+    <title>ElevMonitor Pro - Kode 10</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
@@ -83,6 +83,7 @@
         .info-text { overflow: hidden; text-overflow: ellipsis; max-width: 150px; font-style: italic; color: #555; }
         
         .ap-badge { font-size: 0.7rem; padding: 4px 6px; border-radius: 3px; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; display: block; margin-bottom: 5px; line-height: 1.4; }
+        .ap-badge.ap-finished { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
         .ap-badge b { color: #000; }
 
         .check-btn { background: #eee; color: #777; border: 1px solid #ccc; width: 18px; height: 18px; padding: 0; font-size: 10px; cursor: pointer; border-radius: 3px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
@@ -324,15 +325,12 @@
             let html = "";
             saker.forEach(s => {
                 let apRapport = s.apStart ? `<span class="ap-info">📄 Aktivitetsplan: ${formatDate(s.apStart)}${s.apSlutt ? ' til ' + formatDate(s.apSlutt) : ' (Aktiv)'}</span>` : '';
-                
-                // Samler all historikk for rapporten
                 let oppfInfo = `${apRapport}${formatDate(s.oppfolgingDato)}<br><small>${s.oppfolgingKommentar || ''}</small>`;
                 if (s.historikk && s.historikk.length > 0) {
                     s.historikk.filter(h => h.type === 'oppfolging').forEach(h => {
                         oppfInfo += `<br>• ${formatDate(h.dato)}: <small>${h.info || ''}</small>`;
                     });
                 }
-
                 html += `<tr><td><strong>${s.navn}</strong></td><td>${s.klasse || '-'}</td><td>${formatDate(s.opprettet)}</td><td>${oppfInfo}</td><td>${formatDate(s.nesteMoteDato)} ${s.nesteMoteTid || ''}</td></tr>`;
             });
             return html;
@@ -423,7 +421,8 @@
             if (s.apStart) {
                 let apDisplay = `📄 Aktivitetsplan:<br><b>Oppr:</b> ${formatDate(s.apStart)}`;
                 if(s.apSlutt) apDisplay += ` | <b>Avsl:</b> ${formatDate(s.apSlutt)}`;
-                oppfHtml += `<div class="ap-badge">${apDisplay}</div>`;
+                const apClass = s.apSlutt ? "ap-badge ap-finished" : "ap-badge";
+                oppfHtml += `<div class="${apClass}">${apDisplay}</div>`;
             }
 
             if(s.oppfolgingDato) { oppfHtml += `<div class="info-row ${s.oppfolgingFullfort ? 'dimmed' : ''}"><button class="check-btn ${s.oppfolgingFullfort ? 'checked' : ''}" onclick="toggleMainDone('${s.key}', 'oppfolging')">✔️</button><strong>${formatDate(s.oppfolgingDato)}</strong> <span class="info-text">${s.oppfolgingKommentar || ''}</span> <button class="delete-inline-btn" onclick="deleteEvent('${s.key}', 'main-oppfolging')">🗑️</button></div>`; }
@@ -583,7 +582,6 @@
         items.forEach(s => {
             const apS = s.apStart || ""; const apA = s.apSlutt || "";
             const saksAvsluttet = s.avsluttetDato || "";
-            
             if(s.oppfolgingDato) csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.oppfolgingDato};Oppfølging;${(s.oppfolgingKommentar||"").replace(/;/g, ",")};${s.oppfolgingFullfort ? 'JA' : 'NEI'};${apS};${apA};${saksAvsluttet}\n`;
             if(s.nesteMoteDato) csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.nesteMoteDato};Møte;${s.nesteMoteTid||""};${s.moteFullfort ? 'JA' : 'NEI'};${apS};${apA};${saksAvsluttet}\n`;
             if(s.historikk && Array.isArray(s.historikk)) {
@@ -597,7 +595,7 @@
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
         link.setAttribute("href", url);
-        link.setAttribute("download", `ElevMonitor_Kode9_Eksport_${new Date().toLocaleDateString()}.csv`);
+        link.setAttribute("download", `ElevMonitor_Kode10_Eksport_${new Date().toLocaleDateString()}.csv`);
         link.click();
     }
 
