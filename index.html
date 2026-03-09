@@ -715,32 +715,46 @@ function createSchoolYearArchive() {
     }
 }
 
-// Opprett dato-intervall arkiv
+// Opprett dato-intervall arkiv med rensing av navn
 function createDateIntervalArchive() {
     const fra = document.getElementById('archFra').value;
     const til = document.getElementById('archTil').value;
+    
     if (!fra || !til) return alert("Velg både fra- og til-dato");
     
-    const name = `Periode ${formatDate(fra)} - ${formatDate(til)}`;
+    // Lager et trygt navn uten punktum: f.eks "Periode 2023-01-01 til 2023-06-01"
+    const safeName = `Periode ${fra} til ${til}`;
     
-    // Filtrerer ut saker som ble opprettet i dette tidsrommet
     const filteredDb = {};
+    let count = 0;
+    
     Object.keys(localDb).forEach(key => {
         const opprettet = localDb[key].opprettet;
         if (opprettet >= fra && opprettet <= til) {
             filteredDb[key] = localDb[key];
+            count++;
         }
     });
 
-    if (Object.keys(filteredDb).length === 0) {
-        return alert("Ingen saker funnet i dette tidsintervallet.");
+    if (count === 0) {
+        return alert("Ingen saker funnet med opprettelsesdato i dette tidsrommet.");
     }
 
-    if (confirm(`Fant ${Object.keys(filteredDb).length} saker. Vil du arkivere disse i "${name}"?`)) {
-        saveToArchive(name, filteredDb);
+    if (confirm(`Fant ${count} saker. Vil du arkivere disse i "${safeName}"?`)) {
+        // Vi kaller saveToArchive direkte her
+        firebase.database().ref('arkiv').child(safeName).set({
+            datoOpprettet: new Date().toISOString(),
+            saker: filteredDb
+        }).then(() => {
+            alert("Arkiv opprettet!");
+            document.getElementById('createArchiveModal').style.display = 'none';
+            // VIKTIG: Tvinger frem oppdatering av faner
+            loadArchiveTabs(); 
+        }).catch(error => {
+            alert("Feil ved lagring: " + error.message);
+        });
     }
 }
-
 // Funksjon for å skrive ut spesifikt arkiv
 function printArchive(name) {
     const printWindow = window.open('', '_blank');
@@ -772,21 +786,31 @@ function exportArchiveToExcel(name) {
 // Last faner
 function loadArchiveTabs() {
     const tabContainer = document.getElementById('archiveTabs');
+    if (!tabContainer) return;
+
     firebase.database().ref('arkiv').once('value', (snapshot) => {
         const arkiver = snapshot.val() || {};
         tabContainer.innerHTML = "";
-        Object.keys(arkiver).forEach(key => {
+        
+        const keys = Object.keys(arkiver);
+        if (keys.length === 0) {
+            tabContainer.innerHTML = "<small>Ingen arkiver funnet.</small>";
+            return;
+        }
+
+        keys.forEach(key => {
             const btn = document.createElement('button');
             btn.className = "btn-small";
-            btn.style.background = "var(--bg-gray)";
-            btn.style.color = "var(--text)";
+            btn.style.marginRight = "5px";
+            btn.style.marginBottom = "5px";
+            btn.style.background = "var(--primary)";
+            btn.style.color = "white";
             btn.innerText = key;
             btn.onclick = () => displayArchiveContent(key, arkiver[key].saker);
             tabContainer.appendChild(btn);
         });
     });
 }
-
 // Vis innhold i arkivet (Skrivebeskyttet)
 function displayArchiveContent(archiveName, saker) {
     const content = document.getElementById('archiveContent');
