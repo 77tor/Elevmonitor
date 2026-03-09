@@ -231,7 +231,7 @@
                     <div class="form-group"><label>Neste Møte</label><input type="date" id="nesteMoteDato"></div>
                     <div class="form-group"><label>Tid</label><input type="time" id="nesteMoteTid"></div>
                 </div>
-                <button style="background:var(--accent); margin-top:15px;" id="saveBtn" onclick="lagreData()">Lagre til Skyen</button>
+                <button style="background:var(--accent); margin-top:15px;" id="saveBtn" onclick="lagreData()">Lagre ny sak</button>
                 <button id="clearBtn" onclick="nullstill()" style="background:var(--gray); margin-top:5px;">Tøm felt</button>
                 <button id="cancelEditBtn" onclick="nullstill()" style="background:var(--red); margin-top:5px; display:none;">Avbryt</button>
             </div>
@@ -628,7 +628,7 @@
         document.querySelectorAll('aside input, aside textarea, aside select').forEach(el => el.value = ""); 
         document.getElementById('opprettet').value = new Date().toISOString().split('T')[0];
         document.getElementById('skolemiljoFields').style.display = "none";
-        document.getElementById('saveBtn').innerText = "Lagre til Skyen"; document.getElementById('saveBtn').style.background = "var(--accent)"; document.getElementById('clearBtn').style.display = "block"; document.getElementById('cancelEditBtn').style.display = "none";
+        document.getElementById('saveBtn').innerText = "Lagre ny sak"; document.getElementById('saveBtn').style.background = "var(--accent)"; document.getElementById('clearBtn').style.display = "block"; document.getElementById('cancelEditBtn').style.display = "none";
     }
 
     function eksporterTilExcel() {
@@ -885,8 +885,3 @@ function deleteArchiveTab(archiveName) {
 </body>
 
 </html>
-
-
-
-
-
