@@ -6,10 +6,10 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-
-    <title>ElevMonitor Pro - Utgave 12.0</title>
-<link rel="icon" type="image/png" href="monitor.png">
-<link rel="apple-touch-icon" href="monitor.png">
+    
+    <title>ElevMonitor Pro - Utgave 13.0</title>
+    <link rel="icon" type="image/png" href="monitor_ikon_01.png">
+    <link rel="apple-touch-icon" href="monitor_ikon_01.png">
     
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
@@ -131,6 +131,8 @@
     </div>
 </div>
 
+
+
 <div id="mainApp">
 
 <header class="card" style="display:flex; justify-content:space-between; align-items:center; background: var(--primary); color: white; padding: 8px 20px; margin-bottom: 15px;">
@@ -250,6 +252,46 @@
             </div>
         </main>
 
+
+
+
+<div id="archiveModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 95%; width: 1100px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; margin-bottom: 15px; padding-bottom: 10px;">
+            <h2>🗄️ Saksarkiv</h2>
+            <div>
+                <button onclick="showCreateArchiveOptions()" class="btn-small" style="background: var(--accent);">+ Opprett arkiv</button>
+                <button onclick="closeArchive()" class="btn-small" style="background: var(--red);">Lukk</button>
+            </div>
+        </div>
+        
+        <div id="archiveTabs" style="display: flex; gap: 5px; margin-bottom: 15px; flex-wrap: wrap;"></div>
+        
+        <div id="archiveContent" style="max-height: 60vh; overflow-y: auto;">
+            <p>Velg en fane for å se arkiverte saker.</p>
+        </div>
+    </div>
+</div>
+
+<div id="createArchiveModal" class="modal-overlay" style="z-index: 1100;">
+    <div class="modal-content" style="max-width: 400px;">
+        <h3>Opprett nytt arkiv</h3>
+        <p>Dette vil ta en kopi av alle nåværende saker og lagre dem permanent i arkivet.</p>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+            <button onclick="createSchoolYearArchive()" class="btn-small" style="background: var(--blue);">Nåværende skoleår</button>
+            <div style="border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
+                <label>Velg tidsintervall:</label><br>
+                Fra: <input type="date" id="archFra"><br>
+                Til: <input type="date" id="archTil">
+                <button onclick="createDateIntervalArchive()" class="btn-small" style="background: var(--orange); width: 100%; margin-top: 5px;">Arkiver valgt dato</button>
+            </div>
+            <button onclick="document.getElementById('createArchiveModal').style.display='none'" class="btn-small" style="background: var(--gray);">Avbryt</button>
+        </div>
+    </div>
+</div>
+
+
+
         <aside>
             <div class="card">
                 <h3 style="margin-top:0; border-bottom: 2px solid var(--orange); padding-bottom: 8px; font-size: 1rem;">Neste 4 gjøremål</h3>
@@ -263,6 +305,7 @@
                 <div style="display:flex; gap:10px;">
                     <button onclick="genererRapport()" style="width:auto; padding:8px 15px; background:var(--primary); font-size:0.8rem;">📄 Generer Rapport</button>
                     <button onclick="eksporterTilExcel()" style="width:auto; padding:8px 15px; background:var(--accent); font-size:0.8rem;">📊 Eksporter til Excel</button>
+                    <button class="btn-top" onclick="openArchive()" style="background: var(--gray);">Arkiv</button>
                 </div>
             </div>
             <div style="overflow-x:auto;">
@@ -615,6 +658,144 @@
     document.getElementById('dateNow').innerText = new Intl.DateTimeFormat('no-NO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
     document.getElementById('opprettet').value = new Date().toISOString().split('T')[0];
     renderCalendar();
+
+
+
+
+// Åpne arkivet og hent data
+function openArchive() {
+    document.getElementById('archiveModal').style.display = 'flex';
+    loadArchiveTabs();
+}
+
+function closeArchive() {
+    document.getElementById('archiveModal').style.display = 'none';
+}
+
+function showCreateArchiveOptions() {
+    document.getElementById('createArchiveModal').style.display = 'flex';
+}
+
+// Beregn skoleår-navn
+function getSchoolYearName() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1; // Jan = 1
+    const day = now.getDate();
+    
+    // Skoleår-grense: 20. august
+    const isAfterAugust20 = (month > 8) || (month === 8 && day >= 20);
+    
+    if (isAfterAugust20) {
+        return `${year}-${year + 1}`;
+    } else {
+        return `${year - 1}-${year}`;
+    }
+}
+
+// Funksjon for å faktisk lagre til Firebase Arkiv
+function saveToArchive(archiveName, dataToArchive) {
+    if (Object.keys(dataToArchive).length === 0) return alert("Ingen data å arkivere.");
+    
+    firebase.database().ref('arkiv').child(archiveName).set({
+        datoOpprettet: new Date().toISOString(),
+        saker: dataToArchive
+    }).then(() => {
+        alert("Arkivet '" + archiveName + "' er opprettet.");
+        document.getElementById('createArchiveModal').style.display = 'none';
+        loadArchiveTabs();
+    });
+}
+
+// Opprett skoleår-arkiv
+function createSchoolYearArchive() {
+    const name = "Skoleår " + getSchoolYearName();
+    if (confirm(`Vil du opprette et låst arkiv for ${name}?`)) {
+        saveToArchive(name, localDb);
+    }
+}
+
+// Opprett dato-intervall arkiv
+function createDateIntervalArchive() {
+    const fra = document.getElementById('archFra').value;
+    const til = document.getElementById('archTil').value;
+    if (!fra || !til) return alert("Velg både fra- og til-dato");
+    
+    const name = `Periode ${formatDate(fra)} - ${formatDate(til)}`;
+    
+    // Filtrer saker som har aktivitet i dette intervallet (eller bare ta alle)
+    // Her tar vi alle nåværende saker som er aktive i perioden
+    saveToArchive(name, localDb);
+}
+
+// Last faner
+function loadArchiveTabs() {
+    const tabContainer = document.getElementById('archiveTabs');
+    firebase.database().ref('arkiv').once('value', (snapshot) => {
+        const arkiver = snapshot.val() || {};
+        tabContainer.innerHTML = "";
+        Object.keys(arkiver).forEach(key => {
+            const btn = document.createElement('button');
+            btn.className = "btn-small";
+            btn.style.background = "var(--bg-gray)";
+            btn.style.color = "var(--text)";
+            btn.innerText = key;
+            btn.onclick = () => displayArchiveContent(key, arkiver[key].saker);
+            tabContainer.appendChild(btn);
+        });
+    });
+}
+
+// Vis innhold i arkivet (Skrivebeskyttet)
+function displayArchiveContent(archiveName, saker) {
+    const content = document.getElementById('archiveContent');
+    
+    // Her legger vi til en sletteknapp for hele arkivmappen/fanen
+    let html = `
+        <div style="background: #fff3f3; padding: 10px; margin-bottom: 15px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #991b1b; font-weight: bold;">⚠️ Du ser nå på det låste arkivet: ${archiveName}</span>
+            <button onclick="deleteArchiveTab('${archiveName}')" class="btn-small" style="background: var(--red); font-size: 11px;">Slett hele arkiv-fanen</button>
+        </div>
+        <table style="width:100%; border-collapse: collapse; font-size: 12px;">
+            <thead><tr style="background:#eee;">
+                <th style="padding:10px; text-align:left;">Elev</th>
+                <th style="padding:10px; text-align:left;">Plan</th>
+                <th style="padding:10px; text-align:left;">Opprettet</th>
+                <th style="padding:10px; text-align:left;">Oppfølging / Møter</th>
+            </tr></thead><tbody>`;
+    
+    Object.values(saker).forEach(s => {
+        let detaljer = "";
+        if(s.oppfolgingDato) detaljer += `• Oppfølging: ${formatDate(s.oppfolgingDato)} ${s.oppfolgingKommentar || ''}<br>`;
+        if(s.nesteMoteDato) detaljer += `• Møte: ${formatDate(s.nesteMoteDato)} ${s.nesteMoteTid || ''}<br>`;
+        (s.historikk || []).forEach(h => {
+            detaljer += `• ${h.type === 'mote' ? 'Møte' : 'Oppf'}: ${formatDate(h.dato)} ${h.info || ''}<br>`;
+        });
+
+        html += `<tr style="border-bottom: 1px solid #ddd; vertical-align: top;">
+            <td style="padding:8px;"><b>${s.navn}</b><br>${s.klasse || ''}</td>
+            <td style="padding:8px;">${s.plan || ''}</td>
+            <td style="padding:8px;">${formatDate(s.opprettet)}</td>
+            <td style="padding:8px; font-size: 11px;">${detaljer}</td>
+        </tr>`;
+    });
+    
+    html += `</tbody></table>`;
+    content.innerHTML = html;
+}
+// Funksjon for å slette en hel arkiv-fane
+function deleteArchiveTab(archiveName) {
+    if (confirm(`Er du helt sikker på at du vil slette hele arkivet "${archiveName}"? Dette kan ikke angres.`)) {
+        firebase.database().ref('arkiv').child(archiveName).remove()
+            .then(() => {
+                alert("Arkivet ble slettet.");
+                document.getElementById('archiveContent').innerHTML = "<p>Arkivet ble slettet. Velg en annen fane.</p>";
+                loadArchiveTabs(); // Oppdater fanelisten
+            })
+            .catch(error => alert("Feil ved sletting: " + error.message));
+    }
+}
+
 </script>
 </body>
 
