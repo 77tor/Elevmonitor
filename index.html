@@ -673,7 +673,12 @@ function closeArchive() {
 }
 
 function showCreateArchiveOptions() {
-    document.getElementById('createArchiveModal').style.display = 'flex';
+    const pw = prompt("Vennligst oppgi passord for å få tilgang til arkivering:");
+    if (pw === "3850" || pw === "4635") {
+        document.getElementById('createArchiveModal').style.display = 'flex';
+    } else if (pw !== null) {
+        alert("Feil passord. Tilgang nektet.");
+    }
 }
 
 // Beregn skoleår-navn
@@ -871,13 +876,18 @@ function displayArchiveContent(archiveName, saker) {
 // Funksjon for å slette en hel arkiv-fane
 function deleteArchiveTab(archiveName) {
     if (confirm(`Er du helt sikker på at du vil slette hele arkivet "${archiveName}"? Dette kan ikke angres.`)) {
-        firebase.database().ref('arkiv').child(archiveName).remove()
-            .then(() => {
-                alert("Arkivet ble slettet.");
-                document.getElementById('archiveContent').innerHTML = "<p>Arkivet ble slettet. Velg en annen fane.</p>";
-                loadArchiveTabs(); // Oppdater fanelisten
-            })
-            .catch(error => alert("Feil ved sletting: " + error.message));
+        const pw = prompt("Oppgi passord for å bekrefte sletting:");
+        if (pw === "3850" || pw === "4635") {
+            firebase.database().ref('arkiv').child(archiveName).remove()
+                .then(() => {
+                    alert("Arkivet ble slettet.");
+                    document.getElementById('archiveContent').innerHTML = "<p>Arkivet ble slettet. Velg en annen fane.</p>";
+                    loadArchiveTabs(); 
+                })
+                .catch(error => alert("Feil ved sletting: " + error.message));
+        } else if (pw !== null) {
+            alert("Feil passord. Sletting avbrutt.");
+        }
     }
 }
 
