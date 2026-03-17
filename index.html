@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     
-    <title>ElevMonitor Pro - Kode 17</title>
+    <title>ElevMonitor Pro - Kode 18</title>
     <link rel="icon" type="image/png" href="monitor_ikon_01.png">
     <link rel="apple-touch-icon" href="monitor_ikon_01.png">
     
@@ -116,6 +116,10 @@
             background: var(--bg); display: flex; justify-content: center; 
             align-items: center; z-index: 2000; 
         }
+
+        /* Nye stiler for arkiv-tabell */
+        .archive-details { font-size: 0.75rem; color: #666; margin-top: 5px; background: #fff; padding: 5px; border-radius: 4px; border: 1px solid #eee; }
+        .archive-section-title { font-weight: bold; color: var(--primary); text-transform: uppercase; font-size: 0.65rem; display: block; margin-top: 4px; border-bottom: 1px solid #eee; }
     </style>
 </head>
 <body>
@@ -709,6 +713,8 @@
             tabContainer.innerHTML = Object.keys(arkiver).map(key => `<button class="btn-small" style="background:var(--primary); color:white; margin:2px;" onclick="displayArchiveContent('${key}')">${key}</button>`).join('') || "<small>Ingen arkiv.</small>";
         });
     }
+
+    // UTVIDET VISNING I SAKSARKIV
     function displayArchiveContent(archiveName) {
         firebase.database().ref('arkiv').child(archiveName).once('value', (snapshot) => {
             const arkivData = snapshot.val();
@@ -718,19 +724,60 @@
             let html = `<div style="background:#f8f9fa; padding:15px; border-radius:8px; border:1px solid #ddd; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
                 <strong>🗄️ Arkiv: ${archiveName}</strong>
                 <div><button onclick="checkPassAndRun(deleteArchiveTab, '${archiveName}')" class="btn-small" style="background:var(--red);">🗑️ Slett</button></div>
-            </div><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="background:#eee;"><th>Elev</th><th>Plan</th><th>Opprettet</th><th>Siste status</th></tr></thead><tbody>`;
+            </div><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="background:#eee;"><th>Elev & Sakstype</th><th style="width:50%;">Fullstendig Historikk</th><th>Statusinfo</th></tr></thead><tbody>`;
             
             Object.values(saker).forEach(s => {
+                let historyHtml = `<div class="archive-details">`;
+                
+                // Aktivitetsplan
+                if(s.apStart) {
+                    historyHtml += `<span class="archive-section-title">📄 Aktivitetsplan</span>`;
+                    historyHtml += `Opprettet: ${formatDate(s.apStart)}${s.apSlutt ? ' | Avsluttet: ' + formatDate(s.apSlutt) : ' (Fortsatt aktiv)'}<br>`;
+                }
+
+                // Hovedoppfølging og Møte
+                historyHtml += `<span class="archive-section-title">📅 Planlagte hendelser</span>`;
+                if(s.oppfolgingDato) {
+                    historyHtml += `• <b>Oppfølging:</b> ${formatDate(s.oppfolgingDato)} ${s.oppfolgingTid || ''} ${s.oppfolgingFullfort ? '(Fullført)' : ''}<br>`;
+                    if(s.oppfolgingKommentar) historyHtml += `<i>Notat: ${s.oppfolgingKommentar}</i><br>`;
+                }
+                if(s.nesteMoteDato) {
+                    historyHtml += `• <b>Møte:</b> ${formatDate(s.nesteMoteDato)} ${s.nesteMoteTid || ''} ${s.moteFullfort ? '(Fullført)' : ''}<br>`;
+                }
+
+                // Historikk / Ekstra hendelser
+                if(s.historikk && s.historikk.length > 0) {
+                    historyHtml += `<span class="archive-section-title">📝 Ekstra historikk</span>`;
+                    s.historikk.forEach(h => {
+                        historyHtml += `• ${h.type === 'mote' ? 'Møte' : 'Oppfølging'}: ${formatDate(h.dato)} - ${h.info || ''} ${h.ferdig ? '(Utført)' : ''}<br>`;
+                    });
+                }
+                
+                // Ekstra notater (fra saksdetaljer)
+                if(s.ekstraNotat) {
+                    historyHtml += `<span class="archive-section-title">📒 Saksnotater</span><i>${s.ekstraNotat}</i>`;
+                }
+
+                historyHtml += `</div>`;
+
                 html += `<tr>
-                    <td style="padding:8px; border-bottom:1px solid #eee;"><strong>${s.navn}</strong> (${s.klasse || '-'})</td>
-                    <td style="padding:8px; border-bottom:1px solid #eee;">${s.plan || '-'}</td>
-                    <td style="padding:8px; border-bottom:1px solid #eee;">${formatDate(s.opprettet)}</td>
-                    <td style="padding:8px; border-bottom:1px solid #eee;">${s.status === 'avsluttet' ? 'Avsluttet ' + formatDate(s.avsluttetDato) : 'Aktiv'}</td>
+                    <td style="padding:10px; border-bottom:1px solid #eee; vertical-align:top;">
+                        <strong>${s.navn}</strong><br>
+                        Klasse: ${s.klasse || '-'}<br>
+                        Type: ${s.plan || '-'}<br>
+                        <small>Opprettet: ${formatDate(s.opprettet)}</small>
+                    </td>
+                    <td style="padding:10px; border-bottom:1px solid #eee; vertical-align:top;">${historyHtml}</td>
+                    <td style="padding:10px; border-bottom:1px solid #eee; vertical-align:top;">
+                        <strong>${s.status === 'avsluttet' ? 'Avsluttet' : 'Aktiv'}</strong><br>
+                        ${s.avsluttetDato ? 'Dato: ' + formatDate(s.avsluttetDato) : ''}
+                    </td>
                 </tr>`;
             });
             content.innerHTML = html + "</tbody></table>";
         });
     }
+
     function deleteArchiveTab(name) { if(confirm(`Slette arkivet "${name}" permanent?`)) firebase.database().ref('arkiv').child(name).remove().then(loadArchiveTabs); }
 
     document.getElementById('dateNow').innerText = new Intl.DateTimeFormat('no-NO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
