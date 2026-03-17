@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     
-    <title>ElevMonitor Pro - Kode 16</title>
+    <title>ElevMonitor Pro - Kode 17</title>
     <link rel="icon" type="image/png" href="monitor_ikon_01.png">
     <link rel="apple-touch-icon" href="monitor_ikon_01.png">
     
@@ -706,19 +706,30 @@
     function loadArchiveTabs() {
         firebase.database().ref('arkiv').once('value', (snapshot) => {
             const arkiver = snapshot.val() || {}; const tabContainer = document.getElementById('archiveTabs');
-            tabContainer.innerHTML = Object.keys(arkiver).map(key => `<button class="btn-small" style="background:var(--primary); color:white; margin:2px;" onclick="displayArchiveContent('${key}', ${JSON.stringify(arkiver[key].saker).replace(/'/g, "&apos;")})">${key}</button>`).join('') || "<small>Ingen arkiv.</small>";
+            tabContainer.innerHTML = Object.keys(arkiver).map(key => `<button class="btn-small" style="background:var(--primary); color:white; margin:2px;" onclick="displayArchiveContent('${key}')">${key}</button>`).join('') || "<small>Ingen arkiv.</small>";
         });
     }
-    function displayArchiveContent(archiveName, saker) {
-        const content = document.getElementById('archiveContent');
-        let html = `<div style="background:#f8f9fa; padding:15px; border-radius:8px; border:1px solid #ddd; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
-            <strong>🗄️ Arkiv: ${archiveName}</strong>
-            <div><button onclick="printArchive('${archiveName}')" class="btn-small">🖨️ Print</button> <button onclick="checkPassAndRun(deleteArchiveTab, '${archiveName}')" class="btn-small" style="background:var(--red);">🗑️ Slett</button></div>
-        </div><table id="archiveTableElement" style="width:100%; border-collapse:collapse; font-size:11px;"><thead><tr style="background:#eee;"><th>Elev</th><th>Plan</th><th>Dato</th><th>Hendelser</th></tr></thead><tbody>`;
-        Object.values(saker).forEach(s => {
-            html += `<tr><td>${s.navn}</td><td>${s.plan}</td><td>${formatDate(s.opprettet)}</td><td>${s.oppfolgingDato?`Oppfølging: ${formatDate(s.oppfolgingDato)}`:''}</td></tr>`;
+    function displayArchiveContent(archiveName) {
+        firebase.database().ref('arkiv').child(archiveName).once('value', (snapshot) => {
+            const arkivData = snapshot.val();
+            if (!arkivData) return;
+            const saker = arkivData.saker || {};
+            const content = document.getElementById('archiveContent');
+            let html = `<div style="background:#f8f9fa; padding:15px; border-radius:8px; border:1px solid #ddd; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
+                <strong>🗄️ Arkiv: ${archiveName}</strong>
+                <div><button onclick="checkPassAndRun(deleteArchiveTab, '${archiveName}')" class="btn-small" style="background:var(--red);">🗑️ Slett</button></div>
+            </div><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="background:#eee;"><th>Elev</th><th>Plan</th><th>Opprettet</th><th>Siste status</th></tr></thead><tbody>`;
+            
+            Object.values(saker).forEach(s => {
+                html += `<tr>
+                    <td style="padding:8px; border-bottom:1px solid #eee;"><strong>${s.navn}</strong> (${s.klasse || '-'})</td>
+                    <td style="padding:8px; border-bottom:1px solid #eee;">${s.plan || '-'}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eee;">${formatDate(s.opprettet)}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eee;">${s.status === 'avsluttet' ? 'Avsluttet ' + formatDate(s.avsluttetDato) : 'Aktiv'}</td>
+                </tr>`;
+            });
+            content.innerHTML = html + "</tbody></table>";
         });
-        content.innerHTML = html + "</tbody></table>";
     }
     function deleteArchiveTab(name) { if(confirm(`Slette arkivet "${name}" permanent?`)) firebase.database().ref('arkiv').child(name).remove().then(loadArchiveTabs); }
 
