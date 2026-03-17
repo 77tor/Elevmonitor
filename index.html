@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     
-    <title>ElevMonitor Pro - Kode 15</title>
+    <title>ElevMonitor Pro - Kode 16</title>
     <link rel="icon" type="image/png" href="monitor_ikon_01.png">
     <link rel="apple-touch-icon" href="monitor_ikon_01.png">
     
@@ -194,7 +194,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; margin-bottom: 15px; padding-bottom: 10px;">
                 <h2>🗄️ Saksarkiv</h2>
                 <div>
-                    <button onclick="showCreateArchiveOptions()" class="btn-small" style="background: var(--accent);">+ Opprett arkiv</button>
+                    <button onclick="checkPassAndRun(showCreateArchiveOptions)" class="btn-small" style="background: var(--accent);">+ Opprett arkiv</button>
                     <button onclick="closeArchive()" class="btn-small" style="background: var(--orange);">Lukk</button>
                 </div>
             </div>
@@ -348,6 +348,15 @@
         document.getElementById('skolemiljoFields').style.display = (val === "Skolemiljøsak") ? "block" : "none";
     }
 
+    function checkPassAndRun(callback, ...args) {
+        const pass = prompt("Oppgi kode for å utføre denne handlingen:");
+        if (pass === "4635" || pass === "3850") {
+            callback(...args);
+        } else {
+            alert("Feil kode. Handling avbrutt.");
+        }
+    }
+
     function genererRapport() {
         const rapportVindu = window.open('', '_blank');
         const datoNå = new Date().toLocaleDateString('no-NO');
@@ -457,7 +466,6 @@
             const hist = s.historikk || [];
             const isFinished = s.status === 'avsluttet';
             
-            // OPPFØLGING-KOLONNE
             let oppfHtml = `<div class="info-container">`;
             if (s.apStart) {
                 let apDisplay = `📄 Aktivitetsplan:<br><b>Oppr:</b> ${formatDate(s.apStart)}`;
@@ -482,7 +490,6 @@
             });
             oppfHtml += `</div>`;
 
-            // MØTE-KOLONNE
             let moteHtml = `<div class="info-container">`;
             if(s.nesteMoteDato) { 
                 moteHtml += `<div class="info-row ${s.moteFullfort ? 'dimmed' : ''}">
@@ -672,7 +679,6 @@
         link.click();
     }
 
-    // ARKIV-FUNKSJONER (Uendret fra v14, men inkludert)
     function openArchive() { document.getElementById('archiveModal').style.display = 'flex'; loadArchiveTabs(); }
     function closeArchive() { document.getElementById('archiveModal').style.display = 'none'; }
     function showCreateArchiveOptions() { document.getElementById('createArchiveModal').style.display = 'flex'; }
@@ -707,14 +713,14 @@
         const content = document.getElementById('archiveContent');
         let html = `<div style="background:#f8f9fa; padding:15px; border-radius:8px; border:1px solid #ddd; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
             <strong>🗄️ Arkiv: ${archiveName}</strong>
-            <div><button onclick="printArchive('${archiveName}')" class="btn-small">🖨️ Print</button> <button onclick="deleteArchiveTab('${archiveName}')" class="btn-small" style="background:var(--red);">🗑️ Slett</button></div>
+            <div><button onclick="printArchive('${archiveName}')" class="btn-small">🖨️ Print</button> <button onclick="checkPassAndRun(deleteArchiveTab, '${archiveName}')" class="btn-small" style="background:var(--red);">🗑️ Slett</button></div>
         </div><table id="archiveTableElement" style="width:100%; border-collapse:collapse; font-size:11px;"><thead><tr style="background:#eee;"><th>Elev</th><th>Plan</th><th>Dato</th><th>Hendelser</th></tr></thead><tbody>`;
         Object.values(saker).forEach(s => {
             html += `<tr><td>${s.navn}</td><td>${s.plan}</td><td>${formatDate(s.opprettet)}</td><td>${s.oppfolgingDato?`Oppfølging: ${formatDate(s.oppfolgingDato)}`:''}</td></tr>`;
         });
         content.innerHTML = html + "</tbody></table>";
     }
-    function deleteArchiveTab(name) { if(confirm("Slette arkiv?")) firebase.database().ref('arkiv').child(name).remove().then(loadArchiveTabs); }
+    function deleteArchiveTab(name) { if(confirm(`Slette arkivet "${name}" permanent?`)) firebase.database().ref('arkiv').child(name).remove().then(loadArchiveTabs); }
 
     document.getElementById('dateNow').innerText = new Intl.DateTimeFormat('no-NO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
     document.getElementById('opprettet').value = new Date().toISOString().split('T')[0];
