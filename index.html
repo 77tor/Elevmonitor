@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     
-    <title>ElevMonitor Pro - Utgave 13.0</title>
+    <title>ElevMonitor Pro - Kode 15</title>
     <link rel="icon" type="image/png" href="monitor_ikon_01.png">
     <link rel="apple-touch-icon" href="monitor_ikon_01.png">
     
@@ -86,7 +86,7 @@
 
         .info-container { display: flex; flex-direction: column; gap: 6px; }
         .info-row { display: flex; align-items: center; gap: 4px; white-space: nowrap; font-size: 0.85rem; }
-        .info-text { overflow: hidden; text-overflow: ellipsis; max-width: 150px; font-style: italic; color: #555; }
+        .info-text-block { display: block; font-style: italic; color: #555; font-size: 0.8rem; margin-top: 2px; padding-left: 22px; width: 100%; word-break: break-word; }
         
         .ap-badge { font-size: 0.7rem; padding: 4px 6px; border-radius: 3px; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; display: block; margin-bottom: 5px; line-height: 1.4; }
         .ap-badge.ap-finished { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
@@ -131,8 +131,6 @@
     </div>
 </div>
 
-
-
 <div id="mainApp">
 
 <header class="card" style="display:flex; justify-content:space-between; align-items:center; background: var(--primary); color: white; padding: 8px 20px; margin-bottom: 15px;">
@@ -140,10 +138,8 @@
             <img src="monitor_ikon_08.png" alt="Ikon" style="height: 1.2rem; width: auto;">
             ElevMonitor Cloud
         </h2>
-        
         <span id="syncStatus" style="font-size: 0.75rem; opacity: 0.8;">Kobler til...</span>
     </div>
-    
     <div style="display:flex; align-items:center; gap:15px;">
         <div id="dateNow" style="font-size: 0.9rem; font-weight: 500;"></div>
         <button onclick="loggUt()" style="width:auto; background:rgba(255,255,255,0.1); padding:5px 10px; font-size:0.7rem;">Logg ut</button>
@@ -193,6 +189,39 @@
         </div>
     </div>
 
+    <div id="archiveModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 95%; width: 1100px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; margin-bottom: 15px; padding-bottom: 10px;">
+                <h2>🗄️ Saksarkiv</h2>
+                <div>
+                    <button onclick="showCreateArchiveOptions()" class="btn-small" style="background: var(--accent);">+ Opprett arkiv</button>
+                    <button onclick="closeArchive()" class="btn-small" style="background: var(--orange);">Lukk</button>
+                </div>
+            </div>
+            <div id="archiveTabs" style="display: flex; gap: 5px; margin-bottom: 15px; flex-wrap: wrap;"></div>
+            <div id="archiveContent" style="max-height: 60vh; overflow-y: auto;">
+                <p>Velg en fane for å se arkiverte saker.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="createArchiveModal" class="modal-overlay" style="z-index: 1100;">
+        <div class="modal-content" style="max-width: 400px;">
+            <h3>Opprett nytt arkiv</h3>
+            <p>Dette vil ta en kopi av alle nåværende saker og lagre dem permanent i arkivet.</p>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button onclick="createSchoolYearArchive()" class="btn-small" style="background: var(--blue);">Nåværende skoleår</button>
+                <div style="border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
+                    <label>Eller velg et tidsintervall:</label><br>
+                    Fra: <input type="date" id="archFra"><br>
+                    Til: <input type="date" id="archTil">
+                    <button onclick="createDateIntervalArchive()" class="btn-small" style="background: var(--orange); width: 100%; margin-top: 5px;">Arkiver valgt dato</button>
+                </div>
+                <button onclick="document.getElementById('createArchiveModal').style.display='none'" class="btn-small" style="background: var(--gray);">Avbryt</button>
+            </div>
+        </div>
+    </div>
+
     <div class="layout">
         <aside>
             <div class="card">
@@ -225,8 +254,13 @@
                 </div>
 
                 <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
-                <label>Oppfølging (Dato)</label><input type="date" id="oppfolgingDato">
-                <textarea id="oppfolgingKommentar" placeholder="Beskrivelse"></textarea>
+                
+                <div class="form-row">
+                    <div class="form-group"><label>Oppfølging (Dato)</label><input type="date" id="oppfolgingDato"></div>
+                    <div class="form-group"><label>Tid</label><input type="time" id="oppfolgingTid"></div>
+                </div>
+                <textarea id="oppfolgingKommentar" placeholder="Beskrivelse av oppfølging"></textarea>
+                
                 <div class="form-row">
                     <div class="form-group"><label>Neste Møte</label><input type="date" id="nesteMoteDato"></div>
                     <div class="form-group"><label>Tid</label><input type="time" id="nesteMoteTid"></div>
@@ -252,46 +286,6 @@
             </div>
         </main>
 
-
-
-
-<div id="archiveModal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 95%; width: 1100px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; margin-bottom: 15px; padding-bottom: 10px;">
-            <h2>🗄️ Saksarkiv</h2>
-            <div>
-                <button onclick="showCreateArchiveOptions()" class="btn-small" style="background: var(--accent);">+ Opprett arkiv</button>
-                <button onclick="closeArchive()" class="btn-small" style="background: var(--orange);">Lukk</button>
-            </div>
-        </div>
-        
-        <div id="archiveTabs" style="display: flex; gap: 5px; margin-bottom: 15px; flex-wrap: wrap;"></div>
-        
-        <div id="archiveContent" style="max-height: 60vh; overflow-y: auto;">
-            <p>Velg en fane for å se arkiverte saker.</p>
-        </div>
-    </div>
-</div>
-
-<div id="createArchiveModal" class="modal-overlay" style="z-index: 1100;">
-    <div class="modal-content" style="max-width: 400px;">
-        <h3>Opprett nytt arkiv</h3>
-        <p>Dette vil ta en kopi av alle nåværende saker og lagre dem permanent i arkivet.</p>
-        <div style="display: flex; flex-direction: column; gap: 10px;">
-            <button onclick="createSchoolYearArchive()" class="btn-small" style="background: var(--blue);">Nåværende skoleår</button>
-            <div style="border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
-                <label>Eller velg et tidsintervall:</label><br>
-                Fra: <input type="date" id="archFra"><br>
-                Til: <input type="date" id="archTil">
-                <button onclick="createDateIntervalArchive()" class="btn-small" style="background: var(--orange); width: 100%; margin-top: 5px;">Arkiver valgt dato</button>
-            </div>
-            <button onclick="document.getElementById('createArchiveModal').style.display='none'" class="btn-small" style="background: var(--gray);">Avbryt</button>
-        </div>
-    </div>
-</div>
-
-
-
         <aside>
             <div class="card">
                 <h3 style="margin-top:0; border-bottom: 2px solid var(--orange); padding-bottom: 8px; font-size: 1rem;">Neste 4 gjøremål</h3>
@@ -302,11 +296,11 @@
         <div class="card full-width">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                 <h3 style="margin:0;">Saksliste</h3>
-<div style="display:flex; gap:10px;">
-    <button onclick="genererRapport()" style="width:160px; padding:8px 5px; background:var(--primary); font-size:0.8rem; white-space: nowrap;">📄 Generer Rapport</button>
-    <button onclick="eksporterTilExcel()" style="width:160px; padding:8px 5px; background:var(--accent); font-size:0.8rem; white-space: nowrap;">📊 Eksporter Excel</button>
-    <button onclick="openArchive()" style="width:160px; padding:8px 5px; background: #8e44ad; font-size:0.8rem; white-space: nowrap;">📁 Saksarkiv</button>
-</div>
+                <div style="display:flex; gap:10px;">
+                    <button onclick="genererRapport()" style="width:160px; padding:8px 5px; background:var(--primary); font-size:0.8rem; white-space: nowrap;">📄 Generer Rapport</button>
+                    <button onclick="eksporterTilExcel()" style="width:160px; padding:8px 5px; background:var(--accent); font-size:0.8rem; white-space: nowrap;">📊 Eksporter Excel</button>
+                    <button onclick="openArchive()" style="width:160px; padding:8px 5px; background: #8e44ad; font-size:0.8rem; white-space: nowrap;">📁 Saksarkiv</button>
+                </div>
             </div>
             <div style="overflow-x:auto;">
                 <table>
@@ -381,7 +375,7 @@
             let html = "";
             saker.forEach(s => {
                 let apRapport = s.apStart ? `<span class="ap-info">📄 Aktivitetsplan: ${formatDate(s.apStart)}${s.apSlutt ? ' til ' + formatDate(s.apSlutt) : ' (Aktiv)'}</span>` : '';
-                let oppfInfo = `${apRapport}${formatDate(s.oppfolgingDato)}<br><small>${s.oppfolgingKommentar || ''}</small>`;
+                let oppfInfo = `${apRapport}<strong>${formatDate(s.oppfolgingDato)} ${s.oppfolgingTid || ''}</strong><br><small>${s.oppfolgingKommentar || ''}</small>`;
                 if (s.historikk && s.historikk.length > 0) {
                     s.historikk.filter(h => h.type === 'oppfolging').forEach(h => {
                         oppfInfo += `<br>• ${formatDate(h.dato)}: <small>${h.info || ''}</small>`;
@@ -405,12 +399,7 @@
             rapportHtml += `<h2>AVSLUTTEDE / PASSIVE PLANER</h2><table><thead><tr><th style="width:20%">Navn</th><th style="width:10%">Klasse</th><th style="width:15%">Opprettet / Avsluttet</th><th style="width:25%">Siste Oppfølging</th><th style="width:30%">Type Plan</th></tr></thead><tbody>`;
             avsluttede.sort((a,b) => (b.avsluttetDato || '').localeCompare(a.avsluttetDato || '')).forEach(s => {
                 let apRapport = s.apStart ? `<span class="ap-info">📄 Aktivitetsplan: ${formatDate(s.apStart)} - ${formatDate(s.apSlutt)}</span>` : '';
-                let oppfInfo = `${apRapport}${formatDate(s.oppfolgingDato)}<br><small>${s.oppfolgingKommentar || ''}</small>`;
-                if (s.historikk && s.historikk.length > 0) {
-                    s.historikk.filter(h => h.type === 'oppfolging').forEach(h => {
-                        oppfInfo += `<br>• ${formatDate(h.dato)}: <small>${h.info || ''}</small>`;
-                    });
-                }
+                let oppfInfo = `${apRapport}${formatDate(s.oppfolgingDato)} ${s.oppfolgingTid || ''}<br><small>${s.oppfolgingKommentar || ''}</small>`;
                 rapportHtml += `<tr class="avsluttet-rad"><td>${s.navn}</td><td>${s.klasse || '-'}</td><td>O: ${formatDate(s.opprettet)}<br>A: <strong>${formatDate(s.avsluttetDato)}</strong></td><td>${oppfInfo}</td><td>${s.plan || '-'}</td></tr>`;
             });
             rapportHtml += `</tbody></table>`;
@@ -435,22 +424,17 @@
         document.getElementById('finishKey').value = k;
         document.getElementById('finishNameText').innerText = "Hva ønsker du å gjøre for " + s.navn + "?";
         document.getElementById('finishDateInput').value = new Date().toISOString().split('T')[0];
-        if (s.apStart && !s.apSlutt) {
-            document.getElementById('finishOnlyAPBtn').style.display = "block";
-        } else {
-            document.getElementById('finishOnlyAPBtn').style.display = "none";
-        }
+        if (s.apStart && !s.apSlutt) document.getElementById('finishOnlyAPBtn').style.display = "block";
+        else document.getElementById('finishOnlyAPBtn').style.display = "none";
         document.getElementById('finishModal').style.display = "flex";
     }
     function closeFinishModal() { document.getElementById('finishModal').style.display = "none"; }
-    
     function confirmFinish() {
         const k = document.getElementById('finishKey').value;
         const d = document.getElementById('finishDateInput').value;
         if(!d) return alert("Velg en dato");
         dbRef.child(k).update({ status: 'avsluttet', avsluttetDato: d }).then(() => closeFinishModal());
     }
-
     function confirmFinishAP() {
         const k = document.getElementById('finishKey').value;
         const d = document.getElementById('finishDateInput').value;
@@ -472,26 +456,63 @@
         table.innerHTML = items.map(s => {
             const hist = s.historikk || [];
             const isFinished = s.status === 'avsluttet';
-            let oppfHtml = `<div class="info-container">`;
             
+            // OPPFØLGING-KOLONNE
+            let oppfHtml = `<div class="info-container">`;
             if (s.apStart) {
                 let apDisplay = `📄 Aktivitetsplan:<br><b>Oppr:</b> ${formatDate(s.apStart)}`;
                 if(s.apSlutt) apDisplay += ` | <b>Avsl:</b> ${formatDate(s.apSlutt)}`;
-                const apClass = s.apSlutt ? "ap-badge ap-finished" : "ap-badge";
-                oppfHtml += `<div class="${apClass}">${apDisplay}</div>`;
+                oppfHtml += `<div class="${s.apSlutt ? 'ap-badge ap-finished' : 'ap-badge'}">${apDisplay}</div>`;
             }
-
-            if(s.oppfolgingDato) { oppfHtml += `<div class="info-row ${s.oppfolgingFullfort ? 'dimmed' : ''}"><button class="check-btn ${s.oppfolgingFullfort ? 'checked' : ''}" onclick="toggleMainDone('${s.key}', 'oppfolging')">✔️</button><strong>${formatDate(s.oppfolgingDato)}</strong> <span class="info-text">${s.oppfolgingKommentar || ''}</span> <button class="delete-inline-btn" onclick="deleteEvent('${s.key}', 'main-oppfolging')">🗑️</button></div>`; }
-            hist.filter(h => h.type === 'oppfolging').forEach(h => { oppfHtml += `<div class="info-row ${h.ferdig ? 'dimmed' : ''}"><button class="check-btn ${h.ferdig ? 'checked' : ''}" onclick="toggleExtraDone('${s.key}', ${h.id})">✔️</button><strong>${formatDate(h.dato)}</strong> <span class="info-text">${h.info || ''}</span> <button class="delete-inline-btn" onclick="deleteEvent('${s.key}', ${h.id})">🗑️</button></div>`; });
+            if(s.oppfolgingDato) { 
+                oppfHtml += `<div class="info-row ${s.oppfolgingFullfort ? 'dimmed' : ''}">
+                    <button class="check-btn ${s.oppfolgingFullfort ? 'checked' : ''}" onclick="toggleMainDone('${s.key}', 'oppfolging')">✔️</button>
+                    <button class="btn-outlook-inline" onclick="exportToOutlook('${s.navn}', '${s.klasse || ''}', 'Oppfølging: ${s.plan || ''}', '${s.oppfolgingDato}', '${s.oppfolgingTid || '08:00'}')">📅</button>
+                    <strong>${formatDate(s.oppfolgingDato)} ${s.oppfolgingTid || ''}</strong> 
+                    <button class="delete-inline-btn" onclick="deleteEvent('${s.key}', 'main-oppfolging')">🗑️</button>
+                </div>
+                ${s.oppfolgingKommentar ? `<div class="info-text-block ${s.oppfolgingFullfort ? 'dimmed' : ''}">${s.oppfolgingKommentar}</div>` : ''}`; 
+            }
+            hist.filter(h => h.type === 'oppfolging').forEach(h => { 
+                oppfHtml += `<div class="info-row ${h.ferdig ? 'dimmed' : ''}">
+                    <button class="check-btn ${h.ferdig ? 'checked' : ''}" onclick="toggleExtraDone('${s.key}', ${h.id})">✔️</button>
+                    <strong>${formatDate(h.dato)} ${h.info || ''}</strong> 
+                    <button class="delete-inline-btn" onclick="deleteEvent('${s.key}', ${h.id})">🗑️</button>
+                </div>`; 
+            });
             oppfHtml += `</div>`;
+
+            // MØTE-KOLONNE
             let moteHtml = `<div class="info-container">`;
-            if(s.nesteMoteDato) { moteHtml += `<div class="info-row ${s.moteFullfort ? 'dimmed' : ''}"><button class="check-btn ${s.moteFullfort ? 'checked' : ''}" onclick="toggleMainDone('${s.key}', 'mote')">✔️</button> <button class="btn-outlook-inline" onclick="exportToOutlook('${s.navn}', '${s.klasse || ''}', '${s.plan || ''}', '${s.nesteMoteDato}', '${s.nesteMoteTid || '08:00'}')">📅</button> <strong>${formatDate(s.nesteMoteDato)} ${s.nesteMoteTid || ''}</strong> <button class="delete-inline-btn" onclick="deleteEvent('${s.key}', 'main-mote')">🗑️</button></div>`; }
-            hist.filter(h => h.type === 'mote').forEach(h => { moteHtml += `<div class="info-row ${h.ferdig ? 'dimmed' : ''}"><button class="check-btn ${h.ferdig ? 'checked' : ''}" onclick="toggleExtraDone('${s.key}', ${h.id})">✔️</button> <button class="btn-outlook-inline" onclick="exportToOutlook('${s.navn}', '${s.klasse || ''}', '${s.plan || ''}', '${h.dato}', '${h.info || '08:00'}')">📅</button> <strong>${formatDate(h.dato)} ${h.info || ''}</strong> <button class="delete-inline-btn" onclick="deleteEvent('${s.key}', 'main-mote')">🗑️</button></div>`; });
+            if(s.nesteMoteDato) { 
+                moteHtml += `<div class="info-row ${s.moteFullfort ? 'dimmed' : ''}">
+                    <button class="check-btn ${s.moteFullfort ? 'checked' : ''}" onclick="toggleMainDone('${s.key}', 'mote')">✔️</button> 
+                    <button class="btn-outlook-inline" onclick="exportToOutlook('${s.navn}', '${s.klasse || ''}', 'Møte: ${s.plan || ''}', '${s.nesteMoteDato}', '${s.nesteMoteTid || '08:00'}')">📅</button> 
+                    <strong>${formatDate(s.nesteMoteDato)} ${s.nesteMoteTid || ''}</strong> 
+                    <button class="delete-inline-btn" onclick="deleteEvent('${s.key}', 'main-mote')">🗑️</button>
+                </div>`; 
+            }
+            hist.filter(h => h.type === 'mote').forEach(h => { 
+                moteHtml += `<div class="info-row ${h.ferdig ? 'dimmed' : ''}">
+                    <button class="check-btn ${h.ferdig ? 'checked' : ''}" onclick="toggleExtraDone('${s.key}', ${h.id})">✔️</button> 
+                    <strong>${formatDate(h.dato)} ${h.info || ''}</strong> 
+                    <button class="delete-inline-btn" onclick="deleteEvent('${s.key}', ${h.id})">🗑️</button>
+                </div>`; 
+            });
             moteHtml += `</div>`;
+
             let buttonsHtml = isFinished ? 
-                `<button class="btn-small btn-dimmed" onclick="toggleReopen('${s.key}')">Åpne sak</button> <button class="btn-small btn-dimmed" onclick="slett('${s.key}')" style="background:var(--red); color:white;">Slett</button> <span class="finish-date-text">Avsluttet: ${formatDate(s.avsluttetDato)}</span>` : 
-                `<button class="btn-small" style="background:var(--blue)" onclick="openEventModal('${s.key}')">+ Hendelse</button> <button class="btn-small" style="background:var(--orange)" onclick="rediger('${s.key}')">Endre</button> <button class="btn-small" style="background:var(--gray)" onclick="openFinishModal('${s.key}')">Avslutt</button> <button class="btn-small" style="background:var(--red)" onclick="slett('${s.key}')">Slett</button>`;
-            return `<tr class="${isFinished ? 'row-finished' : ''}"><td><strong>${s.navn}</strong><br><small>${s.klasse || '-'}</small></td><td><span class="plan-clickable" onclick="openPopup('${s.key}')">${s.plan || 'Mangler'}</span></td><td>${formatDate(s.opprettet)}</td><td>${oppfHtml}</td><td>${moteHtml}</td><td><div class="action-btns">${buttonsHtml}</div></td></tr>`;
+                `<button class="btn-small btn-dimmed" onclick="toggleReopen('${s.key}')">Åpne sak</button> <button class="btn-small btn-dimmed" onclick="slett('${s.key}')" style="background:var(--red); color:white;">🗑️ Slett</button> <span class="finish-date-text">Avsluttet: ${formatDate(s.avsluttetDato)}</span>` : 
+                `<button class="btn-small" style="background:var(--blue)" onclick="openEventModal('${s.key}')">+ Hendelse</button> <button class="btn-small" style="background:var(--orange)" onclick="rediger('${s.key}')">Endre</button> <button class="btn-small" style="background:var(--gray)" onclick="openFinishModal('${s.key}')">Avslutt</button> <button class="btn-small" style="background:var(--red)" onclick="slett('${s.key}')">🗑️ Slett</button>`;
+            
+            return `<tr class="${isFinished ? 'row-finished' : ''}">
+                <td><strong>${s.navn}</strong><br><small>${s.klasse || '-'}</small></td>
+                <td><span class="plan-clickable" onclick="openPopup('${s.key}')">${s.plan || 'Mangler'}</span></td>
+                <td>${formatDate(s.opprettet)}</td>
+                <td>${oppfHtml}</td>
+                <td>${moteHtml}</td>
+                <td><div class="action-btns">${buttonsHtml}</div></td>
+            </tr>`;
         }).join('');
     }
 
@@ -502,7 +523,7 @@
             if(s.status === 'avsluttet') return;
             const studentInfo = s.navn + (s.klasse ? ` (${s.klasse})` : '');
             if(s.nesteMoteDato && !s.moteFullfort) allEvents.push({ date: s.nesteMoteDato, type: 'mote', name: studentInfo, info: s.nesteMoteTid ? `kl. ${s.nesteMoteTid}` : '' });
-            if(s.oppfolgingDato && !s.oppfolgingFullfort) allEvents.push({ date: s.oppfolgingDato, type: 'oppfolging', name: studentInfo, info: s.oppfolgingKommentar || '' });
+            if(s.oppfolgingDato && !s.oppfolgingFullfort) allEvents.push({ date: s.oppfolgingDato, type: 'oppfolging', name: studentInfo, info: (s.oppfolgingTid ? `kl. ${s.oppfolgingTid} - ` : '') + (s.oppfolgingKommentar || '') });
             (s.historikk || []).forEach(h => { if(!h.ferdig) allEvents.push({ date: h.dato, type: h.type, name: studentInfo, info: h.info || '' }); });
         });
         allEvents.sort((a, b) => a.date.localeCompare(b.date));
@@ -516,17 +537,16 @@
         const start = new Date(`${dato}T${cleanTime}`); 
         const end = new Date(start.getTime() + 30 * 60000);
         const f = (d) => d.toISOString().replace(/-|:|\.\d+/g, "");
-        const tittel = `Møte: ${navn} (${klasse}) - ${plan}`;
+        const tittel = `${plan}: ${navn} (${klasse})`;
         const ics = ["BEGIN:VCALENDAR","VERSION:2.0","BEGIN:VEVENT",`DTSTART:${f(start)}`,`DTEND:${f(end)}`,`SUMMARY:${tittel}`,"END:VEVENT","END:VCALENDAR"].join("\n");
         const link = document.createElement('a'); 
         link.href = window.URL.createObjectURL(new Blob([ics], {type:'text/calendar'})); 
-        link.setAttribute('download', `mote_${navn}.ics`); 
+        link.setAttribute('download', `elevmonitor_${navn}.ics`); 
         link.click();
     }
 
-    function deleteEvent(k, eventId) { if(!confirm("Slette hendelsen?")) return; if(eventId === 'main-oppfolging') dbRef.child(k).update({ oppfolgingDato: "", oppfolgingKommentar: "", oppfolgingFullfort: false }); else if(eventId === 'main-mote') dbRef.child(k).update({ nesteMoteDato: "", nesteMoteTid: "", moteFullfort: false }); else { const h = (localDb[k].historikk || []).filter(e => e.id !== eventId); dbRef.child(k).update({ historikk: h }); } }
+    function deleteEvent(k, eventId) { if(!confirm("Slette hendelsen?")) return; if(eventId === 'main-oppfolging') dbRef.child(k).update({ oppfolgingDato: "", oppfolgingTid: "", oppfolgingKommentar: "", oppfolgingFullfort: false }); else if(eventId === 'main-mote') dbRef.child(k).update({ nesteMoteDato: "", nesteMoteTid: "", moteFullfort: false }); else { const h = (localDb[k].historikk || []).filter(e => e.id !== eventId); dbRef.child(k).update({ historikk: h }); } }
     function slett(k) { if (confirm(`Slette saken til ${localDb[k].navn}?`)) dbRef.child(k).remove(); }
-
     function openEventModal(k) { document.getElementById('eventStudentKey').value = k; document.getElementById('eventModalTitle').innerText = "Ny hendelse for " + localDb[k].navn; document.getElementById('eventModal').style.display = "flex"; }
     function closeEventModal() { document.getElementById('eventModal').style.display = "none"; }
     function saveExtraEvent() {
@@ -534,7 +554,6 @@
         h.push({ id: Date.now(), type: document.getElementById('eventModalType').value, dato: document.getElementById('eventModalDate').value, info: document.getElementById('eventModalInfo').value, ferdig: false });
         dbRef.child(k).update({ historikk: h }).then(closeEventModal);
     }
-
     function toggleMainDone(k, type) { if(type === 'oppfolging') dbRef.child(k).update({ oppfolgingFullfort: !localDb[k].oppfolgingFullfort }); else dbRef.child(k).update({ moteFullfort: !localDb[k].moteFullfort }); }
     function toggleExtraDone(k, id) { const h = localDb[k].historikk.map(e => { if(e.id === id) e.ferdig = !e.ferdig; return e; }); dbRef.child(k).update({ historikk: h }); }
 
@@ -572,7 +591,7 @@
         Object.values(localDb).forEach(s => {
             const dim = s.status === 'avsluttet' ? 'style="opacity:0.5"' : '';
             if(s.nesteMoteDato === dStr) { const isDone = s.moteFullfort; html += `<div class="agenda-item ${isDone?'dimmed':''}" ${dim}><span class="agenda-tag ${isDone?'done':''}">${isDone?'✅ UTFØRT':'📅 MØTE '+ (s.nesteMoteTid || '')}</span> <strong>${s.navn}</strong> <small>(${s.klasse || ''})</small></div>`; }
-            if(s.oppfolgingDato === dStr) { const isDone = s.oppfolgingFullfort; html += `<div class="agenda-item ${isDone?'dimmed':''}" ${dim}><span class="agenda-tag ${isDone?'done':''}">${isDone?'✅ UTFØRT':'📝 OPPFØLGING'}</span> <strong>${s.navn}</strong> <small>(${s.klasse || ''})</small> ${s.oppfolgingKommentar ? `<div class="agenda-comment">${s.oppfolgingKommentar}</div>` : ''}</div>`; }
+            if(s.oppfolgingDato === dStr) { const isDone = s.oppfolgingFullfort; html += `<div class="agenda-item ${isDone?'dimmed':''}" ${dim}><span class="agenda-tag ${isDone?'done':''}">${isDone?'✅ UTFØRT':'📝 OPPFØLGING '+ (s.oppfolgingTid || '')}</span> <strong>${s.navn}</strong> <small>(${s.klasse || ''})</small> ${s.oppfolgingKommentar ? `<div class="agenda-comment">${s.oppfolgingKommentar}</div>` : ''}</div>`; }
             (s.historikk || []).filter(h => h.dato === dStr).forEach(h => { const isDone = h.ferdig; html += `<div class="agenda-item ${isDone?'dimmed':''}" ${dim}><span class="agenda-tag ${isDone?'done':''}">${isDone?'✅ UTFØRT':(h.type==='mote'?'📅 MØTE':'📝 OPPFØLGING')}</span> <strong>${s.navn}</strong> <small>(${s.klasse || ''})</small> <div class="agenda-comment">${h.info || ''}</div></div>`; });
         });
         document.getElementById('eventList').innerHTML = html || "<i>Ingen planer denne dagen.</i>";
@@ -590,6 +609,7 @@
         document.getElementById('plan').value = s.plan || ""; 
         document.getElementById('opprettet').value = s.opprettet; 
         document.getElementById('oppfolgingDato').value = s.oppfolgingDato || ""; 
+        document.getElementById('oppfolgingTid').value = s.oppfolgingTid || ""; 
         document.getElementById('oppfolgingKommentar').value = s.oppfolgingKommentar || ""; 
         document.getElementById('nesteMoteDato').value = s.nesteMoteDato || ""; 
         document.getElementById('nesteMoteTid').value = s.nesteMoteTid || ""; 
@@ -608,6 +628,7 @@
             plan: document.getElementById('plan').value, 
             opprettet: document.getElementById('opprettet').value || new Date().toISOString().split('T')[0], 
             oppfolgingDato: document.getElementById('oppfolgingDato').value, 
+            oppfolgingTid: document.getElementById('oppfolgingTid').value, 
             oppfolgingKommentar: document.getElementById('oppfolgingKommentar').value, 
             nesteMoteDato: document.getElementById('nesteMoteDato').value, 
             nesteMoteTid: document.getElementById('nesteMoteTid').value, 
@@ -634,264 +655,70 @@
     function eksporterTilExcel() {
         const items = Object.values(localDb);
         if (items.length === 0) return alert("Ingen data å eksportere");
-        let csv = "Navn;Klasse;Plan;Status;Dato;Type;Info/Kommentar;Fullført;AP Opprettet;AP Avsluttet;Avsluttet Saksdato\n";
+        let csv = "Navn;Klasse;Plan;Status;Dato;Tid;Type;Info/Kommentar;Fullført;AP Opprettet;AP Avsluttet;Avsluttet Saksdato\n";
         items.forEach(s => {
             const apS = s.apStart || ""; const apA = s.apSlutt || "";
             const saksAvsluttet = s.avsluttetDato || "";
-            if(s.oppfolgingDato) csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.oppfolgingDato};Oppfølging;${(s.oppfolgingKommentar||"").replace(/;/g, ",")};${s.oppfolgingFullfort ? 'JA' : 'NEI'};${apS};${apA};${saksAvsluttet}\n`;
-            if(s.nesteMoteDato) csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.nesteMoteDato};Møte;${s.nesteMoteTid||""};${s.moteFullfort ? 'JA' : 'NEI'};${apS};${apA};${saksAvsluttet}\n`;
-            if(s.historikk && Array.isArray(s.historikk)) {
-                s.historikk.forEach(h => {
-                    csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${h.dato};${h.type==='mote'?'Ekstra Møte':'Ekstra Oppfølging'};${(h.info||"").replace(/;/g, ",")};${h.ferdig ? 'JA' : 'NEI'};${apS};${apA};${saksAvsluttet}\n`;
-                });
-            }
-            if(!s.oppfolgingDato && !s.nesteMoteDato && (!s.historikk || s.historikk.length === 0)) csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.opprettet};Opprettet;-;-;${apS};${apA};${saksAvsluttet}\n`;
+            if(s.oppfolgingDato) csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.oppfolgingDato};${s.oppfolgingTid||""};Oppfølging;${(s.oppfolgingKommentar||"").replace(/;/g, ",")};${s.oppfolgingFullfort ? 'JA' : 'NEI'};${apS};${apA};${saksAvsluttet}\n`;
+            if(s.nesteMoteDato) csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${s.nesteMoteDato};${s.nesteMoteTid||""};Møte;-;${s.moteFullfort ? 'JA' : 'NEI'};${apS};${apA};${saksAvsluttet}\n`;
+            (s.historikk || []).forEach(h => {
+                csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.status};${h.dato};${h.info||""};${h.type==='mote'?'Ekstra Møte':'Ekstra Oppfølging'};-;${h.ferdig ? 'JA' : 'NEI'};${apS};${apA};${saksAvsluttet}\n`;
+            });
         });
         const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", `ElevMonitor_Kode10_Eksport_${new Date().toLocaleDateString()}.csv`);
+        link.href = URL.createObjectURL(blob);
+        link.setAttribute("download", `ElevMonitor_Eksport_${new Date().toLocaleDateString()}.csv`);
         link.click();
     }
+
+    // ARKIV-FUNKSJONER (Uendret fra v14, men inkludert)
+    function openArchive() { document.getElementById('archiveModal').style.display = 'flex'; loadArchiveTabs(); }
+    function closeArchive() { document.getElementById('archiveModal').style.display = 'none'; }
+    function showCreateArchiveOptions() { document.getElementById('createArchiveModal').style.display = 'flex'; }
+    function getSchoolYearName() {
+        const now = new Date(); const year = now.getFullYear(); const month = now.getMonth() + 1;
+        if (month > 8 || (month === 8 && now.getDate() >= 20)) return `${year}-${year + 1}`;
+        else return `${year - 1}-${year}`;
+    }
+    function saveToArchive(archiveName, dataToArchive) {
+        if (Object.keys(dataToArchive).length === 0) return alert("Ingen data å arkivere.");
+        const archiveRef = firebase.database().ref('arkiv').child(archiveName);
+        archiveRef.once('value', (snapshot) => {
+            if (snapshot.exists() && !confirm(`Arkivet "${archiveName}" eksisterer. Overskrive?`)) return;
+            archiveRef.set({ datoOpprettet: new Date().toISOString(), saker: dataToArchive }).then(() => {
+                alert("Arkiv lagret."); document.getElementById('createArchiveModal').style.display = 'none'; loadArchiveTabs();
+            });
+        });
+    }
+    function createSchoolYearArchive() { saveToArchive("Skoleår " + getSchoolYearName(), localDb); }
+    function createDateIntervalArchive() {
+        const fra = document.getElementById('archFra').value, til = document.getElementById('archTil').value;
+        const filtered = {}; Object.keys(localDb).forEach(k => { if(localDb[k].opprettet >= fra && localDb[k].opprettet <= til) filtered[k] = localDb[k]; });
+        saveToArchive(`Periode ${fra} til ${til}`, filtered);
+    }
+    function loadArchiveTabs() {
+        firebase.database().ref('arkiv').once('value', (snapshot) => {
+            const arkiver = snapshot.val() || {}; const tabContainer = document.getElementById('archiveTabs');
+            tabContainer.innerHTML = Object.keys(arkiver).map(key => `<button class="btn-small" style="background:var(--primary); color:white; margin:2px;" onclick="displayArchiveContent('${key}', ${JSON.stringify(arkiver[key].saker).replace(/'/g, "&apos;")})">${key}</button>`).join('') || "<small>Ingen arkiv.</small>";
+        });
+    }
+    function displayArchiveContent(archiveName, saker) {
+        const content = document.getElementById('archiveContent');
+        let html = `<div style="background:#f8f9fa; padding:15px; border-radius:8px; border:1px solid #ddd; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
+            <strong>🗄️ Arkiv: ${archiveName}</strong>
+            <div><button onclick="printArchive('${archiveName}')" class="btn-small">🖨️ Print</button> <button onclick="deleteArchiveTab('${archiveName}')" class="btn-small" style="background:var(--red);">🗑️ Slett</button></div>
+        </div><table id="archiveTableElement" style="width:100%; border-collapse:collapse; font-size:11px;"><thead><tr style="background:#eee;"><th>Elev</th><th>Plan</th><th>Dato</th><th>Hendelser</th></tr></thead><tbody>`;
+        Object.values(saker).forEach(s => {
+            html += `<tr><td>${s.navn}</td><td>${s.plan}</td><td>${formatDate(s.opprettet)}</td><td>${s.oppfolgingDato?`Oppfølging: ${formatDate(s.oppfolgingDato)}`:''}</td></tr>`;
+        });
+        content.innerHTML = html + "</tbody></table>";
+    }
+    function deleteArchiveTab(name) { if(confirm("Slette arkiv?")) firebase.database().ref('arkiv').child(name).remove().then(loadArchiveTabs); }
 
     document.getElementById('dateNow').innerText = new Intl.DateTimeFormat('no-NO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
     document.getElementById('opprettet').value = new Date().toISOString().split('T')[0];
     renderCalendar();
-
-
-
-
-// Åpne arkivet og hent data
-function openArchive() {
-    document.getElementById('archiveModal').style.display = 'flex';
-    loadArchiveTabs();
-}
-
-function closeArchive() {
-    document.getElementById('archiveModal').style.display = 'none';
-}
-
-function showCreateArchiveOptions() {
-    const pw = prompt("Vennligst oppgi passord for å få tilgang til arkivering:");
-    if (pw === "3850" || pw === "4635") {
-        document.getElementById('createArchiveModal').style.display = 'flex';
-    } else if (pw !== null) {
-        alert("Feil passord. Tilgang nektet.");
-    }
-}
-
-// Beregn skoleår-navn
-function getSchoolYearName() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1; // Jan = 1
-    const day = now.getDate();
-    
-    // Skoleår-grense: 20. august
-    const isAfterAugust20 = (month > 8) || (month === 8 && day >= 20);
-    
-    if (isAfterAugust20) {
-        return `${year}-${year + 1}`;
-    } else {
-        return `${year - 1}-${year}`;
-    }
-}
-
-// Funksjon for å faktisk lagre til Firebase Arkiv
-function saveToArchive(archiveName, dataToArchive) {
-    if (Object.keys(dataToArchive).length === 0) return alert("Ingen data å arkivere.");
-    
-    const archiveRef = firebase.database().ref('arkiv').child(archiveName);
-
-    // Sjekk om arkivet eksisterer fra før
-    archiveRef.once('value', (snapshot) => {
-        if (snapshot.exists()) {
-            const val = confirm(`Arkivet "${archiveName}" eksisterer allerede.\n\nVil du overskrive det eksisterende arkivet? (Dette sletter den forrige utgaven)`);
-            
-            if (!val) {
-                const nyttNavn = prompt("Skriv inn et nytt navn for arkivet:", archiveName + " - Kopi");
-                if (nyttNavn) {
-                    saveToArchive(nyttNavn, dataToArchive);
-                }
-                return; // Avbryter den opprinnelige lagringen
-            }
-        }
-
-        // Utfører selve lagringen
-        archiveRef.set({
-            datoOpprettet: new Date().toISOString(),
-            saker: dataToArchive
-        }).then(() => {
-            alert("Arkivet '" + archiveName + "' er lagret.");
-            document.getElementById('createArchiveModal').style.display = 'none';
-            loadArchiveTabs();
-        }).catch(error => alert("Feil ved arkivering: " + error.message));
-    });
-}
-
-// Opprett skoleår-arkiv
-function createSchoolYearArchive() {
-    const name = "Skoleår " + getSchoolYearName();
-    if (confirm(`Vil du opprette et låst arkiv for ${name}?`)) {
-        saveToArchive(name, localDb);
-    }
-}
-
-// Oppdater også createDateIntervalArchive slik at den bruker den nye saveToArchive-logikken
-function createDateIntervalArchive() {
-    const fra = document.getElementById('archFra').value;
-    const til = document.getElementById('archTil').value;
-    
-    if (!fra || !til) return alert("Velg både fra- og til-dato");
-    
-    const safeName = `Periode ${fra} til ${til}`;
-    const filteredDb = {};
-    let count = 0;
-    
-    Object.keys(localDb).forEach(key => {
-        const opprettet = localDb[key].opprettet;
-        if (opprettet >= fra && opprettet <= til) {
-            filteredDb[key] = localDb[key];
-            count++;
-        }
-    });
-
-    if (count === 0) {
-        return alert("Ingen saker funnet i dette tidsrommet.");
-    }
-
-    // Vi kaller nå den sentrale saveToArchive-funksjonen som håndterer sjekken
-    saveToArchive(safeName, filteredDb);
-}
-
-// Funksjon for å skrive ut spesifikt arkiv
-function printArchive(name) {
-    const printWindow = window.open('', '_blank');
-    const content = document.getElementById('archiveTableElement').outerHTML;
-    printWindow.document.write(`<html><head><title>Arkiv: ${name}</title>`);
-    printWindow.document.write(`<style>body{font-family:sans-serif;padding:20px;} table{width:100%; border-collapse:collapse;} th,td{border:1px solid #ccc; padding:8px; text-align:left; font-size:12px;}</style>`);
-    printWindow.document.write(`</head><body><h2>Arkivmappe: ${name}</h2>${content}</body></html>`);
-    printWindow.document.close();
-    printWindow.print();
-}
-
-// Funksjon for å eksportere spesifikt arkiv til Excel
-function exportArchiveToExcel(name) {
-    const data = JSON.parse(document.getElementById('archiveContent').dataset.currentArchiveData);
-    let csv = "Navn;Klasse;Plan;Opprettet;AP Start;AP Slutt;Status\n";
-    
-    Object.values(data).forEach(s => {
-        csv += `${s.navn};${s.klasse||""};${s.plan||""};${s.opprettet};${s.apStart||""};${s.apSlutt||""};${s.status}\n`;
-    });
-
-    const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    link.setAttribute("href", URL.createObjectURL(blob));
-    link.setAttribute("download", `Arkiv_${name.replace(/\s+/g, '_')}.csv`);
-    link.click();
-}
-
-
-// Last faner
-function loadArchiveTabs() {
-    const tabContainer = document.getElementById('archiveTabs');
-    if (!tabContainer) return;
-
-    firebase.database().ref('arkiv').once('value', (snapshot) => {
-        const arkiver = snapshot.val() || {};
-        tabContainer.innerHTML = "";
-        
-        const keys = Object.keys(arkiver);
-        if (keys.length === 0) {
-            tabContainer.innerHTML = "<small>Ingen arkiver funnet.</small>";
-            return;
-        }
-
-        keys.forEach(key => {
-            const btn = document.createElement('button');
-            btn.className = "btn-small";
-            btn.style.marginRight = "5px";
-            btn.style.marginBottom = "5px";
-            btn.style.background = "var(--primary)";
-            btn.style.color = "white";
-            btn.innerText = key;
-            btn.onclick = () => displayArchiveContent(key, arkiver[key].saker);
-            tabContainer.appendChild(btn);
-        });
-    });
-}
-// Vis innhold i arkivet (Skrivebeskyttet)
-function displayArchiveContent(archiveName, saker) {
-    const content = document.getElementById('archiveContent');
-    
-    let html = `
-        <div style="background: #f8f9fa; padding: 15px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ddd;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <span style="color: var(--primary); font-weight: bold; font-size: 1.1rem;">🗄️ Arkivmappe: ${archiveName}</span>
-                <div style="display: flex; gap: 8px;">
-                    <button onclick="printArchive('${archiveName}')" class="btn-small" style="background: var(--primary);">🖨️ Skriv ut arkiv</button>
-                    <button onclick="exportArchiveToExcel('${archiveName}')" class="btn-small" style="background: var(--accent);">📊 Eksport Excel</button>
-                    <button onclick="deleteArchiveTab('${archiveName}')" class="btn-small" style="background: var(--red);">🗑️ Slett arkivmappe</button>
-                </div>
-            </div>
-            <p style="margin: 0; font-size: 0.8rem; color: #666;">Dette er en skrivebeskyttet kopi av sakene slik de så ut ved arkivering.</p>
-        </div>
-        <table id="archiveTableElement" style="width:100%; border-collapse: collapse; font-size: 12px; background: white;">
-            <thead><tr style="background:#eee;">
-                <th style="padding:10px; text-align:left; border: 1px solid #ddd;">Elev / Klasse</th>
-                <th style="padding:10px; text-align:left; border: 1px solid #ddd;">Plan & AP</th>
-                <th style="padding:10px; text-align:left; border: 1px solid #ddd;">Opprettet</th>
-                <th style="padding:10px; text-align:left; border: 1px solid #ddd;">Historikk / Hendelser</th>
-            </tr></thead><tbody>`;
-    
-    Object.values(saker).forEach(s => {
-        let detaljer = "";
-        if(s.oppfolgingDato) detaljer += `• Oppfølging: ${formatDate(s.oppfolgingDato)} ${s.oppfolgingKommentar || ''}<br>`;
-        if(s.nesteMoteDato) detaljer += `• Møte: ${formatDate(s.nesteMoteDato)} ${s.nesteMoteTid || ''}<br>`;
-        (s.historikk || []).forEach(h => {
-            detaljer += `• ${h.type === 'mote' ? 'Møte' : 'Oppf'}: ${formatDate(h.dato)} ${h.info || ''}<br>`;
-        });
-
-        // Viser Aktivitetsplan hvis den finnes
-        let apInfo = s.apStart ? `<div style="margin-top:5px; padding:3px; background:#fff5f5; border:1px solid #feb2b2; font-size:10px;"><b>AP:</b> ${formatDate(s.apStart)} ${s.apSlutt ? ' til ' + formatDate(s.apSlutt) : '(Løpende)'}</div>` : '';
-
-        html += `<tr style="border-bottom: 1px solid #ddd; vertical-align: top;">
-            <td style="padding:8px; border: 1px solid #ddd;"><b>${s.navn}</b><br>${s.klasse || ''}</td>
-            <td style="padding:8px; border: 1px solid #ddd;">${s.plan || ''}${apInfo}</td>
-            <td style="padding:8px; border: 1px solid #ddd;">${formatDate(s.opprettet)}</td>
-            <td style="padding:8px; font-size: 11px; border: 1px solid #ddd;">${detaljer || '<i>Ingen hendelser</i>'}</td>
-        </tr>`;
-    });
-    
-    html += `</tbody></table>`;
-    content.innerHTML = html;
-    
-    // Lagre dataene midlertidig for eksport-funksjonen
-    content.dataset.currentArchiveName = archiveName;
-    content.dataset.currentArchiveData = JSON.stringify(saker);
-}
-
-
-// Funksjon for å slette en hel arkiv-fane
-function deleteArchiveTab(archiveName) {
-    if (confirm(`Er du helt sikker på at du vil slette hele arkivet "${archiveName}"? Dette kan ikke angres.`)) {
-        const pw = prompt("Oppgi passord for å bekrefte sletting:");
-        if (pw === "3850" || pw === "4635") {
-            firebase.database().ref('arkiv').child(archiveName).remove()
-                .then(() => {
-                    alert("Arkivet ble slettet.");
-                    document.getElementById('archiveContent').innerHTML = "<p>Arkivet ble slettet. Velg en annen fane.</p>";
-                    loadArchiveTabs(); 
-                })
-                .catch(error => alert("Feil ved sletting: " + error.message));
-        } else if (pw !== null) {
-            alert("Feil passord. Sletting avbrutt.");
-        }
-    }
-}
-
 </script>
 </body>
-
 </html>
